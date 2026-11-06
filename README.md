@@ -22,7 +22,7 @@ The ticket view is at http://127.0.0.1:8000. Stop it with Ctrl-C. The report com
 ```sh
 python -m detection.main
 python -m soar.main
-python -m pytest -q
+python -m pytest -q tests
 ```
 
 ## How it works
