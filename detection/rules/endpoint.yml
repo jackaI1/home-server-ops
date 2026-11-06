@@ -1,0 +1,14 @@
+title: Encoded PowerShell command
+id: encoded-powershell
+status: experimental
+logsource:
+  category: process_creation
+detection:
+  selection:
+    event_type: process_creation
+    command_line: powershell -encodedcommand
+  condition: selection
+tags:
+  - attack.t1059.001
+falsepositives:
+  - Approved administrative scripts can use encoded commands.

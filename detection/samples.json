@@ -1,0 +1,1 @@
+[{"id":"1","event_type":"authentication","outcome":"failure","labels":["failed-login"]},{"id":"2","event_type":"authentication","outcome":"success","labels":[]},{"id":"3","event_type":"process_creation","command_line":"powershell -encodedcommand","labels":["encoded-powershell"]},{"id":"4","event_type":"process_creation","command_line":"powershell","labels":[]}]

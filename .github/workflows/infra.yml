@@ -1,0 +1,19 @@
+name: Infrastructure validation
+on: [push, pull_request]
+jobs:
+  telemetry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: helm/kind-action@v1.12.0
+      - uses: hashicorp/setup-terraform@v3
+      - run: kubectl apply --dry-run=server -f telemetry/k8s/app.yaml
+      - run: terraform -chdir=telemetry/terraform init
+      - run: terraform -chdir=telemetry/terraform plan
+  detection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform -chdir=detection/terraform init
+      - run: terraform -chdir=detection/terraform validate

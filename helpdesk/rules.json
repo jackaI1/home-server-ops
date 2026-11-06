@@ -1,0 +1,1 @@
+{"queues":["alex","sam"],"sla_hours":{"urgent":4,"normal":48},"rules":[{"keywords":["outage","locked out"],"category":"access","priority":"urgent"},{"keywords":["printer","laptop"],"category":"hardware","priority":"normal"}]}
