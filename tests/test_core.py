@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime, timezone, timedelta
 from inventory.main import matches, rank, snapshots, findings
 from helpdesk.main import connect, add, report, flags
-from soar.main import triage, deduplicate, sweep
+from soar.main import triage, deduplicate, sweep, HttpIntelClient
 from detection.main import evaluate
 
 def test_matching_ranking():
@@ -25,3 +25,14 @@ def test_soar():
 
 def test_detection():
     assert len(evaluate())==2
+
+def test_http_enrichment():
+    import io
+    def open_mock(url, timeout):
+        assert 'type=hash' in url and timeout == 5
+        return io.BytesIO(b'{"verdict":"benign","confidence":0.99,"source":"fixture"}')
+    client=HttpIntelClient('https://example.test/lookup', open_mock)
+    result=triage({'id':'x','severity':1,'iocs':[{'type':'hash','value':'abc'}]}, client)
+    assert result['route']=='close' and result['evidence'][0]['source']=='fixture'
+    def failed(url, timeout): raise OSError('offline')
+    assert triage({'id':'x','iocs':[{'type':'ip','value':'192.0.2.1'}]}, HttpIntelClient('https://example.test',failed))['route']=='ask-a-human'

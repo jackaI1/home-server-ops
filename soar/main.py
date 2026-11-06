@@ -1,9 +1,25 @@
 """Evidence-based alert triage with a pluggable intelligence client."""
 import hashlib, json
+from urllib.parse import urlencode
+from urllib.request import urlopen
 from pathlib import Path
 class IntelClient:
     def lookup(self, kind, value):
         return {'verdict':'unknown','confidence':0,'source':'no provider configured'}
+
+class HttpIntelClient:
+    """A JSON intelligence endpoint returning verdict, confidence and source."""
+    def __init__(self, endpoint, opener=urlopen):
+        self.endpoint, self.opener = endpoint, opener
+    def lookup(self, kind, value):
+        try:
+            with self.opener(self.endpoint + '?' + urlencode({'type': kind, 'value': value}), timeout=5) as response:
+                data = json.load(response)
+            confidence = float(data['confidence'])
+            if data['verdict'] not in ('malicious', 'benign', 'unknown') or not 0 <= confidence <= 1: raise ValueError('invalid response')
+            return {'verdict': data['verdict'], 'confidence': confidence, 'source': data['source']}
+        except (OSError, ValueError, KeyError, TypeError):
+            return {'verdict': 'unknown', 'confidence': 0, 'source': 'provider unavailable or invalid'}
 
 def triage(alert, client, summarizer=None):
     evidence = [dict(ioc=ioc, **client.lookup(ioc['type'], ioc['value'])) for ioc in alert['iocs']]
