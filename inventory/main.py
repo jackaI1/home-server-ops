@@ -38,6 +38,7 @@ def findings(assets, scans, nvd, kev, status):
     for asset in assets:
         if any(not asset.get(k) for k in ('owner', 'environment', 'criticality')):
             untagged.append(asset['id'])
+            continue
         for scan in scans:
             if scan['asset_id'] != asset['id']: continue
             for item in nvd['vulnerabilities']:

@@ -9,7 +9,14 @@ def test_matching_ranking():
     assert matches('cpe:2.3:a:apache:log4j:2.14.1:*:*:*:*:*:*:*','cpe:2.3:a:apache:log4j:*:*:*:*:*:*:*:*')
     assert not matches('cpe:2.3:a:other:log4j:2.14.1:*:*:*:*:*:*:*','cpe:2.3:a:apache:log4j:*:*:*:*:*:*:*:*')
     assert rank(9.8,True,'high') > rank(9.8,False,'low')
-    snapshots()
+    nvd, kev = snapshots()
+    assets=[{'id':'ok','owner':'x','environment':'home','criticality':'high'}, {'id':'missing','owner':'','environment':'home','criticality':'high'}]
+    scans=[{'asset_id':x['id'],'cpe':'cpe:2.3:a:apache:log4j:2.14.1:*:*:*:*:*:*:*'} for x in assets]
+    rows, missing=findings(assets,scans,nvd,kev,{})
+    assert any(x['asset']=='ok' and x['cve']=='CVE-2021-44228' for x in rows)
+    assert missing==['missing'] and all(x['asset']!='missing' for x in rows)
+    rows, _=findings(assets,scans,nvd,kev,{'ok:CVE-2021-44228':{'status':'closed','date':'2026-11-06'}})
+    assert any(x['status']=='closed' and x['date']=='2026-11-06' for x in rows)
 
 def test_tickets(tmp_path):
     db=connect(str(tmp_path/'db')); now=datetime.now(timezone.utc)-timedelta(hours=10)
