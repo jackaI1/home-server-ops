@@ -45,8 +45,12 @@ def flags(row, now=None):
     return [name for name, condition in [('unassigned', not row['queue']), ('aging', age > RULES['sla_hours'][row['priority']]), ('stalled', idle > 24)] if condition and row['status'] != 'closed']
 
 def main():
-    p=argparse.ArgumentParser(); p.add_argument('--db', default='tickets.db'); sub=p.add_subparsers(dest='cmd', required=True); a=sub.add_parser('add'); a.add_argument('--subject', default=''); a.add_argument('--description', default=''); a.add_argument('--requester', default=''); sub.add_parser('report'); sub.add_parser('serve'); x=p.parse_args(); db=connect(x.db)
+    p=argparse.ArgumentParser(); p.add_argument('--db', default='tickets.db'); sub=p.add_subparsers(dest='cmd', required=True); a=sub.add_parser('add'); a.add_argument('--subject', default=''); a.add_argument('--description', default=''); a.add_argument('--requester', default=''); sub.add_parser('report'); sub.add_parser('serve'); u=sub.add_parser('update'); u.add_argument('id',type=int); u.add_argument('--status',choices=['open','closed'],required=True); x=p.parse_args(); db=connect(x.db)
     if x.cmd=='add': print(json.dumps(add(db,x.subject,x.description,x.requester)))
+    elif x.cmd=='update':
+        cur=db.execute('UPDATE tickets SET status=?, updated=? WHERE id=?', (x.status, datetime.now(timezone.utc).isoformat(), x.id)); db.commit()
+        if not cur.rowcount: p.error('ticket not found')
+        print(json.dumps({'id': x.id, 'status': x.status}))
     elif x.cmd=='serve':
         from http.server import BaseHTTPRequestHandler, HTTPServer
         from html import escape

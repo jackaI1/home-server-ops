@@ -8,7 +8,7 @@ The pinned snapshots come from NVD's CVE API (CVE-2021-44228) and CISA's KEV JSO
 
 ## Tickets and alerts
 
-Edit `helpdesk/rules.json` to adjust queues and targets. SLA measures total calendar hours, not business hours. Use SQLite to update a ticket's status and `updated` timestamp when closing it. The web view binds to localhost and has no authentication; it is for a local demo. Follow-up text is returned when required fields are missing. Duplicate detection uses the same requester and subject on an open ticket.
+Edit `helpdesk/rules.json` to adjust queues and targets. SLA measures total calendar hours, not business hours. Close a ticket with `python -m helpdesk.main --db tickets.db update 1 --status closed`; reopening it uses `--status open`. The web view binds to localhost and has no authentication; it is for a local demo. Follow-up text is returned when required fields are missing. Duplicate detection uses the same requester and subject on an open ticket.
 
 Implement `lookup(kind, value)` on an intelligence client to return `verdict`, `confidence` (0 to 1), and `source`; see `soar/main.py`. `sweep` checks saved log lines for exact IOC strings. The default client does not contact an external service. No automatic containment is performed.
 
