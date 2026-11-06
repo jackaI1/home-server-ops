@@ -14,6 +14,18 @@ function Ensure-HomeFirewallRule {
     $existing=Get-NetFirewallRule -Name $Name -ErrorAction SilentlyContinue
     if (-not $existing -and $PSCmdlet.ShouldProcess($Name,'Create firewall rule')) { New-NetFirewallRule -Name $Name -DisplayName $Name -Direction Inbound -Action Allow -Protocol TCP -LocalPort $Port | Out-Null; Write-Audit 'firewall-create' $Name $AuditPath }
 }
+function Ensure-HomeLocalUser {
+    [CmdletBinding(SupportsShouldProcess)] param([Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][securestring]$Password,[string]$AuditPath='homeops-audit.jsonl')
+    if (-not (Get-LocalUser -Name $Name -ErrorAction SilentlyContinue)) {
+        if ($PSCmdlet.ShouldProcess($Name,'Create local user')) { New-LocalUser -Name $Name -Password $Password | Out-Null; Write-Audit 'user-create' $Name $AuditPath }
+    }
+}
+function Ensure-HomeLocalGroup {
+    [CmdletBinding(SupportsShouldProcess)] param([Parameter(Mandatory)][string]$Name,[string]$AuditPath='homeops-audit.jsonl')
+    if (-not (Get-LocalGroup -Name $Name -ErrorAction SilentlyContinue)) {
+        if ($PSCmdlet.ShouldProcess($Name,'Create local group')) { New-LocalGroup -Name $Name | Out-Null; Write-Audit 'group-create' $Name $AuditPath }
+    }
+}
 function Ensure-HomeGroupMember {
     [CmdletBinding(SupportsShouldProcess)] param([Parameter(Mandatory)][string]$Group,[Parameter(Mandatory)][string]$User,[string]$AuditPath='homeops-audit.jsonl')
     if (-not (Get-LocalGroupMember -Group $Group | Where-Object { $_.Name -eq $User -or $_.Name -like "*\$User" })) { if ($PSCmdlet.ShouldProcess("$Group/$User",'Add group member')) { Add-LocalGroupMember -Group $Group -Member $User; Write-Audit 'group-add' "$Group/$User" $AuditPath } }
@@ -22,4 +34,4 @@ function Ensure-HomeLogRotationTask {
     [CmdletBinding(SupportsShouldProcess)] param([Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][string]$ScriptPath,[string]$AuditPath='homeops-audit.jsonl')
     if (-not (Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue)) { if ($PSCmdlet.ShouldProcess($Name,'Register rotation task')) { $action=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -File `"$ScriptPath`""; $trigger=New-ScheduledTaskTrigger -Daily -At '02:00'; Register-ScheduledTask -TaskName $Name -Action $action -Trigger $trigger | Out-Null; Write-Audit 'task-create' $Name $AuditPath } }
 }
-Export-ModuleMember -Function Get-HomeHealth,Restart-HomeService,Ensure-HomeFirewallRule,Ensure-HomeGroupMember,Ensure-HomeLogRotationTask
+Export-ModuleMember -Function Get-HomeHealth,Restart-HomeService,Ensure-HomeFirewallRule,Ensure-HomeLocalUser,Ensure-HomeLocalGroup,Ensure-HomeGroupMember,Ensure-HomeLogRotationTask

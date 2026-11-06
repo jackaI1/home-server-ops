@@ -16,7 +16,7 @@ def snapshots():
 def matches(installed, criteria):
     # CPE 2.3: compare each component; '*' in the NVD criterion is a wildcard.
     a, b = installed.lower().split(':'), criteria.lower().split(':')
-    return len(a) == len(b) == 13 and all(y in ('*', '-') or x == y for x, y in zip(a, b))
+    return len(a) == len(b) == 13 and all(y == '*' or x == y for x, y in zip(a, b))
 
 def entry_matches(installed, entry):
     from packaging.version import Version, InvalidVersion
@@ -56,8 +56,14 @@ def findings(assets, scans, nvd, kev, status):
     return sorted(result, key=lambda x: -x['risk']), untagged
 
 def main():
-    p = argparse.ArgumentParser(); p.add_argument('--assets', default='inventory/assets.json'); p.add_argument('--scan', default='inventory/scan.csv'); p.add_argument('--status', default='inventory/status.json'); p.add_argument('--report', default='inventory/report.md'); a = p.parse_args()
+    p = argparse.ArgumentParser(); p.add_argument('--assets', default='inventory/assets.json'); p.add_argument('--scan', default='inventory/scan.csv'); p.add_argument('--status', default='inventory/status.json'); p.add_argument('--report', default='inventory/report.md'); p.add_argument('--set-status', nargs=3, metavar=('ASSET_CVE', 'STATUS', 'DATE')); a = p.parse_args()
     nvd, kev = snapshots(); assets = json.loads(Path(a.assets).read_text()); status = json.loads(Path(a.status).read_text())
+    if a.set_status:
+        key, state, when = a.set_status
+        if state not in ('open', 'closed'): p.error('status must be open or closed')
+        date.fromisoformat(when)
+        status[key] = {'status': state, 'date': when}
+        Path(a.status).write_text(json.dumps(status, indent=2) + '\n')
     with open(a.scan, newline='') as f: scans = list(csv.DictReader(f))
     rows, untagged = findings(assets, scans, nvd, kev, status)
     lines = ['# Vulnerability report', '', f'Generated: {date.today().isoformat()}', '', '## Open findings', '', '| Asset | CVE | CVSS | Known exploited | Risk | Status date |', '|---|---|---:|---|---:|---|']
