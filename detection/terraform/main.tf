@@ -16,7 +16,7 @@ resource "opensearch_index" "rules" {
   number_of_replicas = "0"
 }
 resource "terraform_data" "deploy_rules" {
-  triggers_replace = [for path in sort(fileset("${path.module}/../rules", "*.yml")) : filesha256("${path.module}/../rules/${path}")]
+  triggers_replace = [for rule_file in sort(fileset("${path.module}/../rules", "*.yml")) : filesha256("${path.module}/../rules/${rule_file}")]
   depends_on = [opensearch_index.rules]
   provisioner "local-exec" {
     command = "python3 ${path.module}/../deploy.py ${var.endpoint}"
