@@ -30,3 +30,7 @@ POST JSON such as `{"satellite":"demo","observed_at":"2025-01-01T00:00:00Z","ele
 ## Windows
 
 Run PowerShell as administrator where needed. Import with `Import-Module ./windows/HomeOps.psm1`; use `Get-HomeHealth`, or preview changes with e.g. `Ensure-HomeFirewallRule -Name Demo -Port 8080 -WhatIf`. Changes append JSON lines to `homeops-audit.jsonl`. Existing firewall rules and tasks are left unchanged, so inspect them before relying on their settings. Rotation tasks execute a script supplied by the operator. The module can create missing local users and groups, but does not install updates.
+
+## Detection deployment
+
+Run `docker compose -f detection/compose.yml up -d`, wait for port 9200, then run `terraform -chdir=detection/terraform init` and `terraform -chdir=detection/terraform apply`. The module creates indexes and uploads each supported rule by its stable ID. It requires Python and PyYAML. This local OpenSearch example disables authentication and binds its port to localhost; do not expose it. Stop it with `docker compose -f detection/compose.yml down`.
