@@ -1,0 +1,8 @@
+Authentication-Results: broken @@; dmarc=pass
+From: Project Group <updates@example.test>
+Subject: Incomplete synthetic export
+To: reader@recipient.test
+Date: Tue, 03 Nov 2026 09:59:00 +0000
+MIME-Version: 1.0
+
+Incomplete data should produce uncertainty rather than a fake verdict.

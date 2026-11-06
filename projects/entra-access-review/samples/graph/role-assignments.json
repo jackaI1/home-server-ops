@@ -1,0 +1,47 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#role-assignments",
+  "value": [
+    {
+      "id": "synthetic-assignment-1",
+      "principalId": "00000000-0000-0000-0000-000000000001",
+      "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10",
+      "directoryScopeId": "/",
+      "appScopeId": null
+    },
+    {
+      "id": "synthetic-assignment-2",
+      "principalId": "00000000-0000-0000-0000-000000000065",
+      "roleDefinitionId": "729827e3-9c14-49f7-bb1b-9608f156bbb8",
+      "directoryScopeId": "/",
+      "appScopeId": null
+    },
+    {
+      "id": "synthetic-assignment-3",
+      "principalId": "00000000-0000-0000-0000-000000000066",
+      "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10",
+      "directoryScopeId": "/",
+      "appScopeId": null
+    },
+    {
+      "id": "synthetic-assignment-4",
+      "principalId": "00000000-0000-0000-0000-000000000002",
+      "roleDefinitionId": "fe930be7-5e62-47db-91af-98c3a49a38b1",
+      "directoryScopeId": "/",
+      "appScopeId": null
+    },
+    {
+      "id": "synthetic-assignment-5",
+      "principalId": "00000000-0000-0000-0000-000000000003",
+      "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10",
+      "directoryScopeId": "/",
+      "appScopeId": null
+    },
+    {
+      "id": "synthetic-assignment-6",
+      "principalId": "00000000-0000-0000-0000-000000000005",
+      "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10",
+      "directoryScopeId": "/",
+      "appScopeId": null
+    }
+  ]
+}

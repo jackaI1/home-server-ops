@@ -1,0 +1,17 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#role-definitions",
+  "value": [
+    {
+      "id": "62e90394-69f5-4237-9190-012177145e10",
+      "displayName": "Global Administrator"
+    },
+    {
+      "id": "729827e3-9c14-49f7-bb1b-9608f156bbb8",
+      "displayName": "Helpdesk Administrator"
+    },
+    {
+      "id": "fe930be7-5e62-47db-91af-98c3a49a38b1",
+      "displayName": "User Administrator"
+    }
+  ]
+}

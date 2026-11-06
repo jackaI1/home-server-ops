@@ -1,0 +1,81 @@
+name: entra-access-review / PowerShell review
+on:
+  push:
+    branches:
+    - main
+    paths:
+    - projects/entra-access-review/**
+    - .github/workflows/entra-access-review-test.yml
+  pull_request:
+    paths:
+    - projects/entra-access-review/**
+    - .github/workflows/entra-access-review-test.yml
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: review-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    name: Pester (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+        - ubuntu-latest
+        - windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install PowerShell 7.6.9
+      shell: pwsh
+      run: "$ErrorActionPreference = 'Stop'\n$version = '7.6.9'\n$destination = Join-Path $env:RUNNER_TEMP 'review-pwsh'\n\
+        $null = New-Item -ItemType Directory -Path $destination -Force\nif ($IsWindows) {\n  $archive = Join-Path $env:RUNNER_TEMP\
+        \ 'powershell.zip'\n  Invoke-WebRequest \"https://github.com/PowerShell/PowerShell/releases/download/v$version/PowerShell-$version-win-x64.zip\"\
+        \ -OutFile $archive\n  Expand-Archive $archive $destination\n} else {\n  $archive = Join-Path $env:RUNNER_TEMP 'powershell.tar.gz'\n\
+        \  Invoke-WebRequest \"https://github.com/PowerShell/PowerShell/releases/download/v$version/powershell-$version-linux-x64.tar.gz\"\
+        \ -OutFile $archive\n  tar -xzf $archive -C $destination\n  if ($LASTEXITCODE -ne 0) { throw 'PowerShell extraction\
+        \ failed' }\n  chmod +x \"$destination/pwsh\"\n}\nRemove-Item $archive\n$destination | Out-File $env:GITHUB_PATH -Append\
+        \ -Encoding utf8\n"
+    - name: Install Pester 5.7.1
+      shell: pwsh
+      run: '$ErrorActionPreference = ''Stop''
+
+        Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -Repository PSGallery
+
+        '
+    - name: Run tests
+      shell: pwsh
+      run: ./scripts/Test.ps1
+    - name: Run reproducible sample
+      shell: pwsh
+      run: '$ErrorActionPreference = ''Stop''
+
+        ./scripts/Invoke-Review.ps1 -AsOf ''2026-11-05T00:00:00Z''
+
+        if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw ''Review failed'' }
+
+        $findings = @(Import-Csv ./output/findings.csv)
+
+        if ($findings.Count -ne 10) { throw ''Expected 10 sample findings'' }
+
+        $committed = (Get-Content ./docs/sample-review.md -Raw).Replace("`r`n", "`n")
+
+        $generated = (Get-Content ./output/review.md -Raw).Replace("`r`n", "`n")
+
+        if ($committed -ne $generated) { throw ''Committed sample report is out of date'' }
+
+        '
+    - name: Save synthetic reports and test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: review-${{ matrix.os }}
+        path: 'projects/entra-access-review/TestResults.xml
+
+          projects/entra-access-review/output/'
+defaults:
+  run:
+    working-directory: projects/entra-access-review

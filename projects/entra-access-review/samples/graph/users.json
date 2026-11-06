@@ -1,0 +1,71 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users",
+  "value": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "displayName": "Old account",
+      "userPrincipalName": "demo1@example.invalid",
+      "accountEnabled": true,
+      "createdDateTime": "2026-01-01T00:00:00Z",
+      "signInActivity": {
+        "lastSuccessfulSignInDateTime": "2026-06-01T00:00:00Z",
+        "lastSignInDateTime": "2026-11-04T00:00:00Z"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "displayName": "Support operator",
+      "userPrincipalName": "demo2@example.invalid",
+      "accountEnabled": true,
+      "createdDateTime": "2026-01-01T00:00:00Z",
+      "signInActivity": {
+        "lastSuccessfulSignInDateTime": "2026-11-04T00:00:00Z",
+        "lastSignInDateTime": "2026-11-04T00:00:00Z"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000003",
+      "displayName": "Disabled account",
+      "userPrincipalName": "demo3@example.invalid",
+      "accountEnabled": false,
+      "createdDateTime": "2026-01-01T00:00:00Z",
+      "signInActivity": {
+        "lastSuccessfulSignInDateTime": "2026-01-02T00:00:00Z",
+        "lastSignInDateTime": "2026-11-04T00:00:00Z"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000004",
+      "displayName": "Unknown activity",
+      "userPrincipalName": "demo4@example.invalid",
+      "accountEnabled": true,
+      "createdDateTime": "2026-01-01T00:00:00Z",
+      "signInActivity": {
+        "lastSuccessfulSignInDateTime": null,
+        "lastSignInDateTime": "2026-11-04T00:00:00Z"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000005",
+      "displayName": "Emergency account",
+      "userPrincipalName": "demo5@example.invalid",
+      "accountEnabled": true,
+      "createdDateTime": "2026-01-01T00:00:00Z",
+      "signInActivity": {
+        "lastSuccessfulSignInDateTime": "2026-05-01T00:00:00Z",
+        "lastSignInDateTime": "2026-11-04T00:00:00Z"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000006",
+      "displayName": "Boundary account",
+      "userPrincipalName": "demo6@example.invalid",
+      "accountEnabled": true,
+      "createdDateTime": "2026-01-01T00:00:00Z",
+      "signInActivity": {
+        "lastSuccessfulSignInDateTime": "2026-08-07T00:00:00Z",
+        "lastSignInDateTime": "2026-11-04T00:00:00Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: intake
+  namespace: device-automation
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: intake
+  template:
+    metadata:
+      labels:
+        app: intake
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 15
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: intake
+          image: device-automation:local
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 3
+          env:
+            - name: ROLE
+              value: intake
+            - name: AUDIT_URL
+              value: "http://audit:8080"
+            - name: CLIENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: client-auth
+                  key: token
+            - name: INTAKE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: intake-auth
+                  key: token
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: intake
+  namespace: device-automation
+spec:
+  selector:
+    app: intake
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

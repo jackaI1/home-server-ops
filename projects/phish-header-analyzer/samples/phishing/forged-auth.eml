@@ -1,0 +1,12 @@
+Received: from relay.example.test by mx.receiver.test; Tue, 03 Nov 2026 10:02:00 +0000
+Received: from sender.example.test by relay.example.test; Tue, 03 Nov 2026 10:00:00 +0000
+Authentication-Results: mx.receiver.test.evil.test; spf=pass; dkim=pass; dmarc=pass
+From: "security@bank.test" <sender@elsewhere.test>
+Return-Path: <bounce@mailer.test>
+Reply-To: collect@collector.test
+Subject: Synthetic forged receiver claim
+To: reader@recipient.test
+Date: Tue, 03 Nov 2026 09:59:00 +0000
+MIME-Version: 1.0
+
+The authserv-id is a lookalike, not the configured receiver.

@@ -1,0 +1,4 @@
+asset,name,owner
+192.0.2.10,Lab web server,Lab owner
+192.0.2.20,Lab application server,Lab owner
+192.0.2.30,Lab storage server,Lab owner

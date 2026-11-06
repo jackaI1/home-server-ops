@@ -1,0 +1,27 @@
+{
+  "name": "Small tenant standing-access policy",
+  "staleAfterDays": 90,
+  "maxRolesPerUser": 2,
+  "roleRules": [
+    {
+      "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10",
+      "allowedUserIds": [
+        "00000000-0000-0000-0000-000000000005"
+      ],
+      "allowedGroupIds": [],
+      "allowedDirectoryScopes": [
+        "/"
+      ]
+    },
+    {
+      "roleDefinitionId": "729827e3-9c14-49f7-bb1b-9608f156bbb8",
+      "allowedUserIds": [],
+      "allowedGroupIds": [
+        "00000000-0000-0000-0000-000000000065"
+      ],
+      "allowedDirectoryScopes": [
+        "/"
+      ]
+    }
+  ]
+}

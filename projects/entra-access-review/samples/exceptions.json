@@ -1,0 +1,33 @@
+{
+  "exceptions": [
+    {
+      "userId": "00000000-0000-0000-0000-000000000005",
+      "ruleId": "StaleAccount",
+      "owner": "Demo security owner",
+      "reason": "Emergency sign-in account; manual check scheduled.",
+      "expiresOn": "2026-12-01T00:00:00Z"
+    },
+    {
+      "userId": "00000000-0000-0000-0000-000000000005",
+      "ruleId": "NoMfa",
+      "owner": "Demo security owner",
+      "reason": "Emergency sign-in account; manual check scheduled.",
+      "expiresOn": "2026-12-01T00:00:00Z"
+    },
+    {
+      "userId": "00000000-0000-0000-0000-000000000005",
+      "ruleId": "TooManyRoles",
+      "owner": "Demo security owner",
+      "reason": "Emergency sign-in account; manual check scheduled.",
+      "expiresOn": "2026-12-01T00:00:00Z"
+    },
+    {
+      "userId": "00000000-0000-0000-0000-000000000001",
+      "ruleId": "UnapprovedRole",
+      "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10",
+      "owner": "Demo access owner",
+      "reason": "Migration approval has expired.",
+      "expiresOn": "2026-11-01T00:00:00Z"
+    }
+  ]
+}

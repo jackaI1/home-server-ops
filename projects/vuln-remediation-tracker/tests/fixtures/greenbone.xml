@@ -1,0 +1,7 @@
+<get_reports_response status="200"><report id="outer"><report id="inner">
+<scan_run_status>Done</scan_run_status>
+<hosts><count>2</count></hosts><host><ip>192.0.2.30</ip><start>2026-01-01</start><end>2026-01-01</end></host>
+<results>
+<result id="r1"><host>192.0.2.10<asset asset_id="synthetic"/></host><port>80/tcp</port><name>Apache candidate</name><nvt><refs><ref type="cve" id="CVE-2021-41773"/></refs></nvt><severity>7.5</severity></result>
+<result id="r2"><host>192.0.2.10</host><port>443/tcp</port><name>Heartbleed</name><nvt><cve>CVE-2014-0160</cve></nvt><severity>5.0</severity></result>
+</results></report></report></get_reports_response>

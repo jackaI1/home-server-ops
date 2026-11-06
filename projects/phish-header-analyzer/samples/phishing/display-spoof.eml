@@ -1,0 +1,13 @@
+Received: from relay.example.test by mx.receiver.test; Tue, 03 Nov 2026 10:02:00 +0000
+Received: from sender.example.test by relay.example.test; Tue, 03 Nov 2026 10:00:00 +0000
+Authentication-Results: mx.receiver.test; spf=pass smtp.mailfrom=elsewhere.test;
+ dkim=pass header.d=elsewhere.test; dmarc=pass header.from=elsewhere.test
+From: =?UTF-8?Q?security=40bank.test?= <sender@elsewhere.test>
+Return-Path: <sender@elsewhere.test>
+Reply-To: collect@collector.test
+Subject: Synthetic display spoof
+To: reader@recipient.test
+Date: Tue, 03 Nov 2026 09:59:00 +0000
+MIME-Version: 1.0
+
+Authentication can pass for a domain that controls a misleading display name.
