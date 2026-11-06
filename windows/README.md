@@ -1,0 +1,3 @@
+# Windows operator notes
+
+Import `HomeOps.psm1` in an elevated PowerShell session. `Get-HomeHealth` summarizes a service, disk capacity, the Windows Update service and recent system errors. Preview changes with `-WhatIf`. Restarting a service is an explicit operational action; firewall and scheduled-task commands create missing entries, while group membership is only added if absent. Actions write JSON lines to the path passed in `-AuditPath`. Review the existing rule or task separately: these commands do not reconcile changed settings. Supply a trusted rotation script when registering a task.

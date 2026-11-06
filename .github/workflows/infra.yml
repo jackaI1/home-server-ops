@@ -1,0 +1,40 @@
+name: Infrastructure validation
+on: [push, pull_request]
+jobs:
+  telemetry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: helm/kind-action@v1.12.0
+      - uses: hashicorp/setup-terraform@v3
+      - run: docker build -f telemetry/Dockerfile -t telemetry:local .
+      - run: kind load docker-image telemetry:local --name chart-testing
+      - run: kubectl apply --dry-run=server -f telemetry/k8s/app.yaml
+      - run: terraform -chdir=telemetry/terraform init
+      - run: terraform -chdir=telemetry/terraform plan
+      - run: terraform -chdir=telemetry/terraform apply -auto-approve
+      - run: kubectl -n telemetry rollout status deployment/telemetry --timeout=120s
+      - run: |
+          kubectl -n telemetry port-forward service/telemetry 8000:80 > /tmp/forward.log 2>&1 &
+          forward_pid=$!
+          trap 'kill "$forward_pid"' EXIT
+          for i in $(seq 1 30); do curl -fsS http://localhost:8000/health && break || sleep 2; done
+          curl -fsS -X POST http://localhost:8000/passes -H 'Content-Type: application/json' -d '{"satellite":"test","observed_at":"2025-01-01T00:00:00Z","elevation":45}'
+          curl -fsS 'http://localhost:8000/passes?satellite=test' | grep test
+  detection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: pip install PyYAML==6.0.2
+      - run: docker compose -f detection/compose.yml up -d
+      - run: |
+          for i in $(seq 1 60); do curl -fsS http://localhost:9200 && exit 0 || sleep 3; done
+          exit 1
+      - run: terraform -chdir=detection/terraform init
+      - run: terraform -chdir=detection/terraform validate
+      - run: terraform -chdir=detection/terraform plan
+      - run: terraform -chdir=detection/terraform apply -auto-approve
+      - run: curl -fsS http://localhost:9200/home-detection-rules/_doc/failed-login | grep failed-login
+      - if: always()
+        run: docker compose -f detection/compose.yml down -v

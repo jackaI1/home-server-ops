@@ -1,0 +1,24 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q tests
+      - run: python -m detection.main
+      - run: python -m inventory.main
+      - uses: actions/upload-artifact@v4
+        with: {name: reports, path: "detection/coverage.md\ninventory/report.md"}
+      - run: docker build -f telemetry/Dockerfile -t telemetry:ci .
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: |
+          Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck
+          Invoke-Pester ./windows/HomeOps.Tests.ps1 -CI

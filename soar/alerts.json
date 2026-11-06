@@ -1,0 +1,1 @@
+[{"id":"sample-1","severity":5,"iocs":[{"type":"ip","value":"192.0.2.1"},{"type":"domain","value":"example.test"}]}]

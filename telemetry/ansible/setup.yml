@@ -1,0 +1,8 @@
+- hosts: all
+  become: true
+  tasks:
+    - name: Install host dependencies on Debian
+      ansible.builtin.apt:
+        name: [docker.io, curl, unzip]
+        state: present
+        update_cache: true
