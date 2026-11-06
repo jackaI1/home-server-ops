@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.26,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vuln-remediation-tracker"
+version = "0.1.0"
+description = "Offline scan evidence and rescan-validated remediation tracking"
+requires-python = ">=3.10"
+dependencies = ["defusedxml>=0.7.1,<0.8"]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10", "ruff>=0.11,<1"]
+
+[project.scripts]
+vuln-tracker = "vuln_tracker.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vuln_tracker"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.hatch.build.targets.wheel.force-include]
+"data" = "vuln_tracker/data"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

@@ -1,0 +1,4 @@
+output/
+TestResults.xml
+private-exports/
+.DS_Store

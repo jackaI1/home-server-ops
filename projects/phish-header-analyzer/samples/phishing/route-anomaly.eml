@@ -1,0 +1,13 @@
+Received: from b.example.test by mx.receiver.test; Tue, 03 Nov 2026 12:00:00 +0000
+Received: from a.example.test by b.example.test; Tue, 03 Nov 2026 09:59:00 +0000
+Received: from x.example.test by a.example.test; Tue, 03 Nov 2026 10:00:00 +0000
+Authentication-Results: mx.receiver.test; spf=pass smtp.mailfrom=example.test;
+ dkim=pass header.d=example.test; dmarc=pass header.from=example.test
+From: Project Group <updates@example.test>
+Return-Path: <bounce@example.test>
+Subject: Synthetic route anomalies
+To: reader@recipient.test
+Date: Tue, 03 Nov 2026 09:59:00 +0000
+MIME-Version: 1.0
+
+The timestamps include a reversal and a long delay. Investigate clock skew and queues.

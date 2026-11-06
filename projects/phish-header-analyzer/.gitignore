@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+# Keep private email and investigation output outside version control.
+*.eml
+!samples/**/*.eml
+reports/

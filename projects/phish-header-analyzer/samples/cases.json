@@ -1,0 +1,82 @@
+[
+  {
+    "file": "benign/direct.eml",
+    "score": 0,
+    "findings": [],
+    "purpose": "Aligned direct delivery with a normal link."
+  },
+  {
+    "file": "benign/bulk-mail.eml",
+    "score": 10,
+    "findings": [
+      "return_path_mismatch"
+    ],
+    "purpose": "Legitimate bulk sender uses a separate bounce domain."
+  },
+  {
+    "file": "benign/forwarded.eml",
+    "score": 20,
+    "findings": [
+      "auth_spf_fail",
+      "return_path_mismatch"
+    ],
+    "purpose": "SPF failure with surviving DKIM and reported DMARC pass is plausible forwarding."
+  },
+  {
+    "file": "benign/bounce.eml",
+    "score": 0,
+    "findings": [],
+    "purpose": "A null envelope sender is normal for a bounce."
+  },
+  {
+    "file": "phishing/credential-lure.eml",
+    "score": 100,
+    "findings": [
+      "auth_spf_fail",
+      "auth_dkim_fail",
+      "auth_dmarc_fail",
+      "return_path_mismatch",
+      "reply_to_mismatch",
+      "display_brand_mismatch",
+      "url_userinfo",
+      "url_ip_host",
+      "url_insecure",
+      "url_text_mismatch"
+    ],
+    "purpose": "Layered sender and URL deception with reported authentication failures."
+  },
+  {
+    "file": "phishing/display-spoof.eml",
+    "score": 35,
+    "findings": [
+      "reply_to_mismatch",
+      "display_address_mismatch"
+    ],
+    "purpose": "Authentication passes do not make a misleading display name trustworthy."
+  },
+  {
+    "file": "phishing/forged-auth.eml",
+    "score": 45,
+    "findings": [
+      "return_path_mismatch",
+      "reply_to_mismatch",
+      "display_address_mismatch"
+    ],
+    "purpose": "A forged authentication header is kept as an untrusted observation."
+  },
+  {
+    "file": "phishing/route-anomaly.eml",
+    "score": 15,
+    "findings": [
+      "received_time_reversal",
+      "received_long_gap"
+    ],
+    "purpose": "Anomalous route alone does not establish malicious intent."
+  },
+  {
+    "file": "benign/incomplete-export.eml",
+    "score": 0,
+    "findings": [],
+    "purpose": "Missing trace and unreadable authentication do not mean safe or malicious."
+  }
+]

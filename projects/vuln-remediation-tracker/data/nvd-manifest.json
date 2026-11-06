@@ -1,0 +1,10 @@
+{
+  "sha256": "95e656fc357cb92204a008058c3c55f0c1468ea9ae7f23d545b8e4812055bd5f",
+  "retrieved_at": "2026-11-06T04:59:25.012703+00:00",
+  "sources": [
+    "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-41773",
+    "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-44228",
+    "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2014-0160"
+  ],
+  "note": "Unmodified CVE records from public NVD API 2.0; subset, not complete feed."
+}

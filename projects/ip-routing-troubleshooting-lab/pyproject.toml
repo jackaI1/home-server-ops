@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ip-routing-lab"
+version = "0.1.0"
+description = "Reproducible FRRouting fault diagnosis lab"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest==8.3.5"]
+
+[project.scripts]
+route-lab = "routing_lab.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["routing_lab*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

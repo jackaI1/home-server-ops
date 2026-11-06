@@ -1,0 +1,86 @@
+name: ip-routing-daemon / Router CI
+on:
+  push:
+    branches:
+    - main
+    paths:
+    - projects/ip-routing-daemon/**
+    - .github/workflows/ip-routing-daemon-ci.yml
+  pull_request:
+    paths:
+    - projects/ip-routing-daemon/**
+    - .github/workflows/ip-routing-daemon-ci.yml
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  linux:
+    name: Linux namespaces (sanitizers=${{ matrix.sanitize }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitize:
+        - 0
+        - 1
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install test tools
+      run: 'sudo apt-get update -qq
+
+        sudo apt-get install -y iproute2 iputils-ping
+
+        python -m pip install -r requirements-dev.txt
+
+        '
+    - name: Build C++20 daemon and core tests
+      run: make -j2 SANITIZE=${{ matrix.sanitize }} CXX=g++
+    - name: Run all tests, including actual namespace traffic
+      env:
+        ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+        UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+      run: "sudo env PATH=\"$PATH\" ASAN_OPTIONS=\"$ASAN_OPTIONS\" UBSAN_OPTIONS=\"$UBSAN_OPTIONS\" \\\n  python -m pytest\
+        \ -v -s --junitxml=build/results.xml --basetemp=build/test-artifacts\n"
+    - name: Run the documented failure demo
+      run: 'sudo env ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 UBSAN_OPTIONS=halt_on_error=1 python lab/topology.py --output
+        build/demo
+
+        perl tools/routing-report.pl --strict --text build/live-summary.txt --csv build/live-summary.csv build/demo/events.jsonl
+
+        '
+    - name: Verify no lab namespaces or router processes remain
+      if: always()
+      run: 'test -z "$(ip netns list | awk ''/^jr[0-9a-f]+-/ {print $1}'')"
+
+        if pgrep -x routerd; then exit 1; fi
+
+        '
+    - name: Return generated reports to the runner account
+      if: always()
+      run: "if [ -d build ]; then\n  sudo chown -R \"$(id -u):$(id -g)\" build\nfi\n"
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: router-results-sanitizers-${{ matrix.sanitize }}
+        path: 'projects/ip-routing-daemon/build/results.xml
+
+          projects/ip-routing-daemon/build/live-summary.*
+
+          projects/ip-routing-daemon/build/test-artifacts/**/r*.log
+
+          projects/ip-routing-daemon/build/test-artifacts/**/r*.json
+
+          projects/ip-routing-daemon/build/test-artifacts/**/resources.json
+
+          projects/ip-routing-daemon/build/test-artifacts/**/events.jsonl
+
+          projects/ip-routing-daemon/build/test-artifacts/**/report.*
+
+          projects/ip-routing-daemon/build/demo/'
+defaults:
+  run:
+    working-directory: projects/ip-routing-daemon

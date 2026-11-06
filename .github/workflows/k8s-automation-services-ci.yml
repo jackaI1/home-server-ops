@@ -1,0 +1,76 @@
+name: k8s-automation-services / CI
+on:
+  push:
+    branches:
+    - main
+    paths:
+    - projects/k8s-automation-services/**
+    - .github/workflows/k8s-automation-services-ci.yml
+  pull_request:
+    paths:
+    - projects/k8s-automation-services/**
+    - .github/workflows/k8s-automation-services-ci.yml
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tests:
+    name: Python ${{ matrix.python }} tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        python:
+        - '3.12'
+        - '3.13'
+    steps:
+    - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
+        python-version: ${{ matrix.python }}
+        working-directory: projects/k8s-automation-services
+    - run: uv sync --frozen
+    - run: uv run ruff check . && uv run ruff format --check .
+    - run: uv run pytest -q
+  cluster-security:
+    name: Kind smoke and image security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install pinned kind
+      run: 'curl -fsSL https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64 -o /tmp/kind
+
+        chmod +x /tmp/kind
+
+        sudo mv /tmp/kind /usr/local/bin/kind
+
+        '
+    - name: Run real cluster and security checks
+      env:
+        ARTIFACT_DIR: ${{ github.workspace }}/artifacts
+      run: ./scripts/kind-smoke.sh
+    - name: Scan the exact application image with Trivy
+      run: "mkdir -p artifacts\ndocker run --rm -v /var/run/docker.sock:/var/run/docker.sock \\\n  -v \"$PWD/artifacts:/out\"\
+        \ -v /tmp/trivy-cache:/root/.cache/trivy \\\n  aquasec/trivy:0.76.2 image --scanners vuln,secret --format json \\\n\
+        \  --output /out/trivy.json device-automation:local\ndocker run --rm -v /var/run/docker.sock:/var/run/docker.sock\
+        \ \\\n  -v /tmp/trivy-cache:/root/.cache/trivy \\\n  aquasec/trivy:0.76.2 image --scanners vuln,secret --severity\
+        \ HIGH,CRITICAL \\\n  --ignore-unfixed --exit-code 1 device-automation:local\n"
+    - name: Upload bounded evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: cluster-security-evidence
+        path: 'projects/k8s-automation-services/artifacts/smoke.json
+
+          projects/k8s-automation-services/artifacts/ownership.txt
+
+          projects/k8s-automation-services/artifacts/trivy.json'
+        retention-days: 14
+defaults:
+  run:
+    working-directory: projects/k8s-automation-services

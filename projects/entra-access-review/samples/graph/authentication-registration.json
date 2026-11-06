@@ -1,0 +1,40 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#authentication-registration",
+  "value": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "isMfaRegistered": false,
+      "methodsRegistered": [
+        "email"
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "isMfaRegistered": true,
+      "methodsRegistered": [
+        "microsoftAuthenticatorPush"
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000003",
+      "isMfaRegistered": false,
+      "methodsRegistered": [
+        "email"
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000005",
+      "isMfaRegistered": false,
+      "methodsRegistered": [
+        "email"
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000006",
+      "isMfaRegistered": true,
+      "methodsRegistered": [
+        "microsoftAuthenticatorPush"
+      ]
+    }
+  ]
+}
