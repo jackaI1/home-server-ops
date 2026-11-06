@@ -34,7 +34,7 @@ Invoke-EntraAccessReview -ExportPath ./samples/graph -PolicyPath ./samples/polic
 
 ## Tests and limits
 
-There are 0 test source files in this copy. No test pass count is claimed here: I have not re-run the project suite as part of this move. This is a source snapshot, and running it on a new machine may need environment-specific setup.
+I kept 2 files of test code and supporting test helpers in this copy. A source-file inventory is not an execution result. This is a source snapshot, and running it on a new machine may need environment-specific setup.
 
 
 Project checks run from this directory through the path-filtered hub workflows: `entra-access-review-test.yml`.
