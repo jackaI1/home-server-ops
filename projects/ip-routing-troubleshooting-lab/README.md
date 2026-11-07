@@ -2,6 +2,8 @@
 
 I built a small network that I can deliberately break to learn how the underlying idea works. This is a learning project.
 
+I use a constructed lab topology and generated test traffic for the examples.
+
 ## What I can break
 
 Each folder in [cases/](cases/) has a reproduction script, expected symptoms and a fix check. For example:

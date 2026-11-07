@@ -2,6 +2,8 @@
 
 I built a small device-check service to learn how the underlying idea works. This is a learning project.
 
+The demonstrations use lab device definitions and local test services.
+
 ## How I split the work
 
 I use three Python microservices, meaning small programs with separate responsibilities:
