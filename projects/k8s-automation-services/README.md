@@ -2,6 +2,8 @@
 
 I built a small device-check service to learn how the underlying idea works. This is a learning project.
 
+The demonstrations use lab device definitions and local test services.
+
 ## How I split the work
 
 I use three Python microservices, meaning small programs with separate responsibilities:
@@ -40,6 +42,7 @@ I start with NetworkPolicies, Kubernetes traffic rules, that deny inbound and ou
 There are 4 test source files in this copy. No test pass count is claimed here: I have not re-run the project suite as part of this move. This is a source snapshot, and running it on a new machine may need environment-specific setup.
 
 
-Project checks run from this directory through the path-filtered hub workflows: (removed workflow).
 
 The relocated workflow did not complete successfully within the migration batch. Local test sources remain available.
+
+I did not retain a project-specific GitHub Actions workflow. The test sources remain in this folder for local use.

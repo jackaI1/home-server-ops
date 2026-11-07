@@ -2,6 +2,8 @@
 
 I built a small network that I can deliberately break to learn how the underlying idea works. This is a learning project.
 
+I use a constructed lab topology and generated test traffic for the examples.
+
 ## What I can break
 
 Each folder in [cases/](cases/) has a reproduction script, expected symptoms and a fix check. For example:
@@ -35,6 +37,7 @@ If the Linux kernel exposes MPLS, a forwarding method that uses labels, the core
 There are 5 test source files in this copy. No test pass count is claimed here: I have not re-run the project suite as part of this move. This is a source snapshot, and running it on a new machine may need environment-specific setup.
 
 
-Project checks run from this directory through the path-filtered hub workflows: (removed workflow).
 
 The relocated workflow did not complete successfully within the migration batch. Local test sources remain available.
+
+I did not retain a project-specific GitHub Actions workflow. The test sources remain in this folder for local use.

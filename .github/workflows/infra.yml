@@ -1,5 +1,9 @@
 name: Infrastructure validation
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore: ['projects/**']
+  pull_request:
+    paths-ignore: ['projects/**']
 jobs:
   telemetry:
     runs-on: ubuntu-latest
