@@ -41,7 +41,7 @@ The telemetry API stores simulated pass records in PostgreSQL. Both run on k3s, 
 
 ## Kubernetes on k3s
 
-I built a Kubernetes deployment for the telemetry service because the first version kept its database in a temporary volume, so a cluster restart could lose records. This version keeps the data on a persistent volume, backs it up every night and can restore it.
+I built a way to run the telemetry service on my home server so its records survive a restart, because the first version kept them in a temporary place and a restart could wipe them. The telemetry service is the small program that stores simulated satellite passes. The new setup runs it in Kubernetes, a program that starts, watches and restarts the apps on a server. The records now sit on a disk that survives restarts, and a backup copy is saved every night and can be restored.
 
 The chart in `k8s/charts/home-ops` runs the API, PostgreSQL, the backup job and the network policies. Each pod has CPU and memory limits, and the API has health checks. The namespace refuses pods that run as root. The API is not exposed to the network: a default-deny policy blocks all traffic, and only the API may reach the database. Terraform in `k8s/terraform` creates the namespace and the database password Secret from an environment variable, then installs the chart.
 
