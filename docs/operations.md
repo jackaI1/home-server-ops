@@ -14,7 +14,7 @@ Implement `lookup(kind, value)` on an intelligence client to return `verdict`, `
 
 ## Telemetry deployment
 
-The local manifest includes an ephemeral PostgreSQL deployment: it is not suitable for valuable data. With Docker, kind, kubectl and Terraform installed, build the image from the repository root, create a cluster, load the image and apply the module:
+The local manifest includes an ephemeral PostgreSQL deployment: it is not suitable for valuable data. For persistent storage, nightly backups and network policies, use the Helm chart described in [Kubernetes notes](kubernetes.md). With Docker, kind, kubectl and Terraform installed, build the image from the repository root, create a cluster, load the image and apply the module:
 
 ```sh
 docker build -f telemetry/Dockerfile -t telemetry:local .

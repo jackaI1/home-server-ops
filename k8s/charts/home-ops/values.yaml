@@ -1,0 +1,46 @@
+# Defaults for the home-ops chart. Secrets are never stored here: the
+# database password comes from a Kubernetes Secret named by postgres.existingSecret.
+
+telemetry:
+  image:
+    repository: telemetry
+    tag: local
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 8000
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 250m, memory: 256Mi}
+  # Namespaces and pod labels allowed to reach the API on its port.
+  # kube-system is where k3s runs its Traefik ingress controller.
+  ingress:
+    fromNamespaces: [kube-system]
+    fromPodLabels: {}
+
+postgres:
+  image:
+    repository: postgres
+    tag: "16"
+    pullPolicy: IfNotPresent
+  database: telemetry
+  user: telemetry
+  # Name of a Secret in the release namespace with a POSTGRES_PASSWORD key.
+  existingSecret: ""
+  storage:
+    size: 5Gi
+    storageClass: ""
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+backup:
+  enabled: true
+  schedule: "17 2 * * *"
+  # Number of days of dumps to keep on the backup volume.
+  retentionDays: 14
+  storage:
+    size: 10Gi
+    storageClass: ""
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {cpu: 200m, memory: 256Mi}

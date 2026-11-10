@@ -25,6 +25,8 @@ python -m soar.main
 python -m pytest -q tests
 ```
 
+The Kubernetes chart tests need `helm` installed, and you run them with `python -m pytest -q k8s/tests`.
+
 ## How it works
 
 The sample report lists one open finding for the tagged desk node and places the other sample asset in the missing-tags queue. A finding is a software issue that needs investigation; a CVE number is its public identifier. The NVD is a public catalog of those issues, while CISA maintains a list of issues known to be exploited.
@@ -35,11 +37,28 @@ The ticket desk stores requests in SQLite, a local database. Its rules file defi
 
 Detection rules use a small supported subset of Sigma, a common format for describing log patterns. The converter makes parameterized SQLite queries, checks labeled examples and writes an ATT&CK coverage table. The alert workflow takes an interchangeable intelligence client; the included client returns unknown, so uncertain alerts go to a person. The optional summary callback cannot change routing.
 
-The telemetry API stores simulated pass records in PostgreSQL. Kubernetes runs the service and database as containers, and Terraform describes the resources. The example database is temporary and its password is for local use only. The PowerShell module provides cautious Windows operations with `-WhatIf` and a JSON audit trail. See [operator notes](docs/operations.md) for setup, limitations and examples.
+The telemetry API stores simulated pass records in PostgreSQL. Both run on k3s, a small Kubernetes cluster on the home server. Helm packages them with resource limits, health checks and network policies that block all traffic unless it is allowed. Terraform installs them and keeps the database password out of Git. Each night a backup job dumps the database. The details are in [Kubernetes notes](docs/kubernetes.md). The PowerShell module provides cautious Windows operations with `-WhatIf` and a JSON audit trail. See [operator notes](docs/operations.md) for setup, limitations and examples.
+
+## Kubernetes on k3s
+
+I built a Kubernetes deployment for the telemetry service because the first version kept its database in a temporary volume, so a cluster restart could lose records. This version keeps the data on a persistent volume, backs it up every night and can restore it.
+
+The chart in `k8s/charts/home-ops` runs the API, PostgreSQL, the backup job and the network policies. Each pod has CPU and memory limits, and the API has health checks. The namespace refuses pods that run as root. The API is not exposed to the network: a default-deny policy blocks all traffic, and only the API may reach the database. Terraform in `k8s/terraform` creates the namespace and the database password Secret from an environment variable, then installs the chart.
+
+To deploy it, follow the steps in [Kubernetes notes](docs/kubernetes.md). The short version:
+
+```sh
+export TF_VAR_postgres_password="$(openssl rand -hex 16)"
+terraform -chdir=k8s/terraform init
+terraform -chdir=k8s/terraform apply -var kube_context=default
+kubectl -n home-ops port-forward service/telemetry 8000:80
+```
+
+The backups are dumps written to a volume on the same machine. Copy them off the server, and see the notes for how to restore one.
 
 ## Checks
 
-GitHub Actions runs Python tests and detection checks, builds the telemetry image, and runs Pester tests on Windows Server. The sample detection report shows precision and recall on synthetic examples, not performance against real traffic.
+GitHub Actions runs Python tests and detection checks, builds the telemetry image, and runs Pester tests on Windows Server. A Kubernetes workflow lints the Helm chart, checks the rendered manifests against the Kubernetes schema, runs the chart and network policy tests, and deploys to a throwaway kind cluster. There it checks the backup and restore, and that pods outside the allowed paths cannot reach the API or the database. The sample detection report shows precision and recall on synthetic examples, not performance against real traffic.
 
 ## Other things I've built here
 
