@@ -27,6 +27,22 @@ spec:
         runAsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # Wait for PostgreSQL so the API does not crash-loop while the database starts.
+        - name: wait-for-postgres
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          command: [sh, -c]
+          args:
+            - until pg_isready -h postgres -p 5432 -U {{ .Values.postgres.user | quote }}; do sleep 2; done
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext:
+            {{- include "home-ops.securityContext" . | nindent 12 }}
+            runAsNonRoot: true
+            runAsUser: 999
+            readOnlyRootFilesystem: true
       containers:
         - name: telemetry
           image: "{{ .Values.telemetry.image.repository }}:{{ .Values.telemetry.image.tag }}"

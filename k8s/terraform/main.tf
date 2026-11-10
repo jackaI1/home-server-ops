@@ -38,8 +38,9 @@ resource "helm_release" "home_ops" {
   name      = "home-ops"
   namespace = kubernetes_namespace_v1.home_ops.metadata[0].name
   chart     = var.chart_path
-  wait      = true
-  timeout   = 300
+  # Helm's wait would also wait for the backup volume to bind, and that happens only
+  # after the first backup job runs (WaitForFirstConsumer). Check rollouts with kubectl.
+  wait = false
 
   values = [yamlencode({
     telemetry = {

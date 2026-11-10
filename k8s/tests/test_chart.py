@@ -15,6 +15,10 @@ def pod_specs(docs):
             yield "CronJob", doc["metadata"]["name"], doc["spec"]["jobTemplate"]["spec"]["template"]["spec"]
 
 
+def all_containers(spec):
+    return list(spec.get("initContainers", [])) + list(spec["containers"])
+
+
 def test_lint_passes():
     if shutil.which("helm") is None:
         pytest.fail("helm is required")
@@ -44,10 +48,17 @@ def test_rendered_manifests_have_the_expected_objects(render):
 
 def test_every_container_has_requests_and_limits(render):
     for kind, name, spec in pod_specs(render()):
-        for container in spec["containers"]:
+        for container in all_containers(spec):
             resources = container["resources"]
             assert resources["requests"]["cpu"] and resources["requests"]["memory"], f"{kind}/{name}"
             assert resources["limits"]["cpu"] and resources["limits"]["memory"], f"{kind}/{name}"
+
+
+def test_api_waits_for_the_database(render):
+    spec = find(render(), "Deployment", "telemetry")["spec"]["template"]["spec"]
+    init = spec["initContainers"][0]
+    assert init["name"] == "wait-for-postgres"
+    assert "pg_isready" in init["args"][0]
 
 
 def test_long_running_pods_have_health_probes(render):
@@ -65,7 +76,7 @@ def test_every_container_meets_restricted_pod_security(render):
         pod_context = spec.get("securityContext", {})
         assert pod_context.get("runAsNonRoot") is True, f"{kind}/{name} must run as non-root"
         assert pod_context.get("seccompProfile", {}).get("type") == "RuntimeDefault"
-        for container in spec["containers"]:
+        for container in all_containers(spec):
             ctx = container["securityContext"]
             assert ctx["allowPrivilegeEscalation"] is False, f"{kind}/{name}"
             assert ctx["capabilities"]["drop"] == ["ALL"], f"{kind}/{name}"
