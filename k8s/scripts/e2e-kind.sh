@@ -30,13 +30,6 @@ check() {  # check <expected: ok|blocked> <description> <command...>
 kubectl -n "$NS" rollout status deployment/telemetry --timeout=180s
 kubectl -n "$NS" rollout status statefulset/postgres --timeout=180s
 
-echo "== backup and restore"
-kubectl -n "$NS" delete job manual-backup restore-check --ignore-not-found --wait=true
-kubectl -n "$NS" create job --from=cronjob/backup manual-backup
-kubectl -n "$NS" wait --for=condition=complete job/manual-backup --timeout=300s
-backup_log="$(kubectl -n "$NS" logs job/manual-backup)"
-if [[ "$backup_log" == *"wrote /backups/telemetry-"* ]]; then pass "backup wrote a dump"; else fail "backup did not write a dump"; fi
-
 echo "== API"
 kubectl -n "$NS" port-forward service/telemetry "$PORT:80" >/tmp/home-ops-forward.log 2>&1 &
 forward_pid=$!
@@ -47,6 +40,13 @@ check ok "record is accepted" curl -fsS -X POST "http://127.0.0.1:$PORT/passes" 
 readback="$(curl -fsS "http://127.0.0.1:$PORT/passes?satellite=e2e")"
 if [[ "$readback" == *'"e2e"'* ]]; then pass "record is read back"; else fail "record is not read back"; fi
 kill "$forward_pid" 2>/dev/null || true; forward_pid=""
+
+echo "== backup and restore"
+kubectl -n "$NS" delete job manual-backup restore-check --ignore-not-found --wait=true
+kubectl -n "$NS" create job --from=cronjob/backup manual-backup
+kubectl -n "$NS" wait --for=condition=complete job/manual-backup --timeout=300s
+backup_log="$(kubectl -n "$NS" logs job/manual-backup)"
+if [[ "$backup_log" == *"wrote /backups/telemetry-"* ]]; then pass "backup wrote a dump"; else fail "backup did not write a dump"; fi
 
 echo "== restore the dump into a scratch database and compare row counts"
 kubectl -n "$NS" apply -f - <<YAML
@@ -80,7 +80,10 @@ spec:
               restored=\$(psql -d restore_check -Atc 'SELECT count(*) FROM passes')
               live=\$(psql -d telemetry -Atc 'SELECT count(*) FROM passes')
               echo "live=\$live restored=\$restored"
-              test "\$restored" -gt 0 && test "\$restored" -le "\$live"
+              if [ "\$restored" -eq 0 ] || [ "\$restored" -ne "\$live" ]; then
+                echo "row count mismatch: live=\$live restored=\$restored" >&2
+                exit 1
+              fi
               psql -d postgres -qc 'DROP DATABASE restore_check'
           securityContext:
             allowPrivilegeEscalation: false
