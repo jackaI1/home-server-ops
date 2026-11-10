@@ -1,0 +1,78 @@
+{{- if not .Values.postgres.existingSecret }}
+{{- fail "postgres.existingSecret must name a Secret with a POSTGRES_PASSWORD key" }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry
+  labels:
+    {{- include "home-ops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: telemetry
+spec:
+  replicas: {{ .Values.telemetry.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: telemetry
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: telemetry
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: telemetry
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: telemetry
+          image: "{{ .Values.telemetry.image.repository }}:{{ .Values.telemetry.image.tag }}"
+          imagePullPolicy: {{ .Values.telemetry.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.telemetry.port }}
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.existingSecret }}
+                  key: POSTGRES_PASSWORD
+            # $(POSTGRES_PASSWORD) is expanded by Kubernetes at start-up.
+            # Passwords must be letters and digits only (checked in Terraform).
+            - name: DATABASE_URL
+              value: "postgresql+psycopg://{{ .Values.postgres.user }}:$(POSTGRES_PASSWORD)@{{ include "home-ops.postgresHost" . }}:5432/{{ .Values.postgres.database }}"
+            - name: APP_ENV
+              value: k8s
+          resources:
+            {{- toYaml .Values.telemetry.resources | nindent 12 }}
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          securityContext:
+            {{- include "home-ops.securityContext" . | nindent 12 }}
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: telemetry
+  labels:
+    {{- include "home-ops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: telemetry
+spec:
+  selector:
+    app.kubernetes.io/name: telemetry
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

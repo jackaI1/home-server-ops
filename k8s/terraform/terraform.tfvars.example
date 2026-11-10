@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars (ignored by git) and fill in. Never put the password here;
+# export it instead: export TF_VAR_postgres_password='...'
+kubeconfig_path = "~/.kube/config"
+kube_context    = "k3s-home"
+namespace       = "home-ops"
+
+# Traffic from Traefik (kube-system) is allowed by default. To let a client pod in
+# the same namespace reach the API, add a label such as:
+# ingress_pod_labels = { access = "telemetry-client" }
+
+backup_schedule       = "17 2 * * *"
+backup_retention_days = 14

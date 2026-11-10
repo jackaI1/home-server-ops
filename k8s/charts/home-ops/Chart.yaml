@@ -1,0 +1,6 @@
+apiVersion: v2
+name: home-ops
+description: Telemetry API and PostgreSQL for the home server, with network policies and nightly backups
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
