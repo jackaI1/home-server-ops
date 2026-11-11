@@ -1,7 +1,6 @@
 ---
 - name: Verify the home server setup
   hosts: all
-  become: true
   gather_facts: false
   tasks:
     - name: Packages from the base role are installed

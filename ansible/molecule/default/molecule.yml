@@ -18,6 +18,8 @@ provisioner:
   env:
     ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
     ANSIBLE_HOST_KEY_CHECKING: "False"
+    # The container runs as root, and it has no sudo to escalate with.
+    ANSIBLE_BECOME: "false"
 verifier:
   name: ansible
 scenario:
