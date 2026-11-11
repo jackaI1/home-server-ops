@@ -42,7 +42,7 @@ func (p *HTTPProber) Check(ctx context.Context, url string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return fmt.Errorf("GET %s returned %d", url, resp.StatusCode)
 	}
