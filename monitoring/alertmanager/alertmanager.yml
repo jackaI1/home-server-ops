@@ -1,0 +1,31 @@
+# Alert routing. Critical alerts repeat every hour, warnings every 4 hours.
+# The receivers post to alert-sink (see docker-compose.yml). Swap the URLs for a real notifier.
+route:
+  receiver: warnings
+  group_by: [alertname, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: critical
+      repeat_interval: 1h
+
+receivers:
+  - name: critical
+    webhook_configs:
+      - url: http://alert-sink:8080/critical
+        send_resolved: true
+  - name: warnings
+    webhook_configs:
+      - url: http://alert-sink:8080/warning
+        send_resolved: true
+
+# When an instance is down, its warnings are noise, so hide them.
+inhibit_rules:
+  - source_matchers:
+      - alertname="ServiceDown"
+    target_matchers:
+      - severity="warning"
+    equal: [instance]

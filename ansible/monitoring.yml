@@ -1,0 +1,51 @@
+---
+# Deploy the monitoring stack from monitoring/ to the home server and start it.
+# The grafana admin password comes from an Ansible Vault variable, never from Git.
+#
+#   ansible-vault create group_vars/homeserver/vault.yml   # set vault_grafana_admin_password
+#   ansible-playbook -i inventory/hosts.yml monitoring.yml --check --diff   # dry run first
+#   ansible-playbook -i inventory/hosts.yml monitoring.yml --ask-vault-pass
+- name: Deploy the monitoring stack
+  hosts: homeserver
+  vars:
+    monitoring_dir: /opt/home-ops/monitoring
+    # Host folder that the backup job's textfile is copied to (see docs/monitoring.md).
+    backup_textfile_dir: /var/lib/home-ops/backup-textfile
+  tasks:
+    - name: Check that the Grafana password is set
+      ansible.builtin.assert:
+        that:
+          - vault_grafana_admin_password is defined
+          - vault_grafana_admin_password | length >= 12
+        fail_msg: "Set vault_grafana_admin_password (at least 12 characters) in the vault."
+        quiet: true
+
+    - name: Create the monitoring and textfile folders
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ monitoring_dir }}"
+        - "{{ backup_textfile_dir }}"
+
+    - name: Copy the stack configuration
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../monitoring/"
+        dest: "{{ monitoring_dir }}/"
+        mode: "0644"
+
+    - name: Write the compose environment file
+      ansible.builtin.copy:
+        dest: "{{ monitoring_dir }}/.env"
+        mode: "0600"
+        content: |
+          GRAFANA_ADMIN_PASSWORD={{ vault_grafana_admin_password }}
+          BACKUP_TEXTFILE_DIR={{ backup_textfile_dir }}
+      no_log: true
+
+    - name: Start the stack and wait until the containers are running
+      ansible.builtin.command:
+        cmd: docker compose up -d --wait
+        chdir: "{{ monitoring_dir }}"
+      changed_when: true

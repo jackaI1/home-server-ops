@@ -126,6 +126,13 @@ def test_backup_cronjob_writes_to_the_backup_volume(render):
     assert "gzip -t" in script and "mv " in script and "-mtime" in script
 
 
+def test_backup_writes_the_textfile_timestamp_after_the_check(render):
+    # monitoring/ alerts when this timestamp is older than 26 hours (BackupStale).
+    script = find(render(), "CronJob", "backup")["spec"]["jobTemplate"]["spec"]["template"]["spec"]["containers"][0]["args"][0]
+    assert "home_ops_backup_last_success_timestamp_seconds" in script
+    assert script.index("gzip -t") < script.index("home-ops-backup.prom.tmp")
+
+
 def test_backups_can_be_turned_off(render):
     kinds = {d["kind"] for d in render({"backup": {"enabled": False}})}
     assert "CronJob" not in kinds and "PersistentVolumeClaim" not in kinds

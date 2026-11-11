@@ -1,0 +1,33 @@
+---
+# Runbook: restart one service on the home server, then wait for its health check.
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.yml runbooks/restart-service.yml \
+#     -e service_name=lifeos-demo -e health_url=https://lifeos.jacklai.ca/healthz
+- name: Restart a service and check that it answers
+  hosts: homeserver
+  become: true
+  gather_facts: false
+  vars:
+    health_url: ""
+  pre_tasks:
+    - name: Require the service name
+      ansible.builtin.assert:
+        that: service_name is defined and service_name | length > 0
+        fail_msg: "Pass the systemd unit with -e service_name=<name>"
+        quiet: true
+
+  tasks:
+    - name: Restart the service
+      ansible.builtin.systemd:
+        name: "{{ service_name }}"
+        state: restarted
+
+    - name: Wait until the health check returns 200
+      ansible.builtin.uri:
+        url: "{{ health_url }}"
+        status_code: 200
+      register: health
+      until: health.status == 200
+      retries: 12
+      delay: 5
+      when: health_url | length > 0

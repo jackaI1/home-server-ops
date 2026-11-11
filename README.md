@@ -3,6 +3,7 @@
 I built a set of small tools for looking after a home server because I wanted a practical way to learn how to keep a system organized and respond to problems. They use sample data so I can try them without exposing my own machines or records.
 
 The inventory checks installed software against a saved public vulnerability record and highlights machines with missing ownership tags. The ticket desk sorts requests, assigns them to a queue and reports how long they wait. The alert tools test detection rules against sample logs and gather evidence for a person to review. A small telemetry service records simulated satellite passes, and a Windows module covers routine administration. The Linux part sets up the server from a clean install and shows why a backup is slow. I also added a small controller that keeps each service on the version I set, so an update is a one-line change.
+I also added a monitoring stack that tells me when the LifeOS demo, a disk or a backup fails, and a model server that restarts and updates without me watching each step.
 
 ## Try it
 
@@ -82,9 +83,48 @@ A Kubernetes operator is a program that watches its own kind of object and keeps
 
 The code is in `k8s/operator`. It uses controller-runtime, the library most Go controllers are built on. The reconciler tests run against a real Kubernetes API server and etcd through envtest, and the smoke test installs the chart on a kind cluster, bumps the version and breaks a health path to check that the status catches it. CI builds the code, lints it and runs both test levels.
 
+## Monitoring and alerts
+
+I built a monitoring stack for my home server because I want to hear about a failure when it happens, not when I next check. The things I care about most are the LifeOS demo, which I run myself, and the nightly backups. Monitoring means a set of small programs collect numbers about the server every 30 seconds and check them against rules I wrote. When a rule is broken for long enough, I get a message.
+
+It watches three things: whether the LifeOS demo answers in a browser, whether a disk is running out of room, and whether last night's backup finished and passed its check. Each alert waits a few minutes before it fires, so one slow page does not wake me. Every alert has a short page in `monitoring/runbooks/` that says what it means and what to do first.
+
+To start it on the server:
+
+```sh
+cd monitoring
+cp .env.example .env          # then set GRAFANA_ADMIN_PASSWORD in .env
+docker compose up -d --wait
+```
+
+The dashboard is at http://127.0.0.1:3000 on the server. The ports only listen on localhost, so from my laptop I reach it through an SSH tunnel and nothing is exposed to my network. The setup steps, the list of alerts and the limits are in [monitoring notes](docs/monitoring.md).
+
+The technical parts: Docker Compose starts Prometheus (which collects and checks the numbers), node_exporter (host CPU, memory and disks), blackbox_exporter (which requests the LifeOS demo and reads its certificate expiry), Alertmanager (which groups alerts and sends them on) and Grafana (dashboards, set up from files in Git). The backup job writes a timestamp only after `gzip -t` passes, and Prometheus reads that timestamp to tell whether the last good backup is more than 26 hours old. A disk alert fires only when the trend says it will fill within a day and less than a quarter is free, so a log that grows at night does not page me. The alert rules are tested with `promtool`: each rule has cases that show it firing when it should and staying quiet for short blips. The playbooks in `ansible/` deploy the stack and run the restart and restore steps. CI boots the whole stack and checks that every target is up.
+
+Two limits. The alerts currently go to a small stand-in receiver that prints them, until I choose email or a phone notification. And the LifeOS health path (`/healthz`) is an assumption I still need to confirm against the app.
+
+## A model server that restarts and updates safely
+
+I built a Kubernetes setup for my local model server because I wanted it to restart and update without me watching each step, and to go back to the last working version if an update broke. Kubernetes is a program that runs containers and keeps them running. The server only receives requests once it reports that its model has loaded (the readiness check). A stuck process is restarted (the liveness check). Each copy has a memory and CPU limit, and an autoscaler adds a copy when the load is high. An update replaces one copy at a time, so there is always a working one to answer.
+
+The server in `k8s/model-serving/app` is a stand-in that returns a fixed reply. I did not want to download model weights onto this Mac, so the deployment is what is real: it has the same endpoints a real model server would, and the chart and the checks do not change when I swap in a real image.
+
+To deploy it and test a rollout on a local kind cluster (kind runs a small Kubernetes cluster inside Docker):
+
+```sh
+helm upgrade --install model-server k8s/model-serving/chart -n model-serving --create-namespace --set image.tag=0.2.0 --wait
+NS=model-serving EXPECT_VERSION=0.2.0 k8s/model-serving/scripts/smoke.sh
+```
+
+`rollout_check.sh` goes through the whole sequence: it installs one version, rolls to the next one while a client sends 300 requests, then tries a version whose image does not exist. That broken rollout must fail, the working pods must keep answering, and the script rolls back and checks again. The details are in [model serving notes](docs/model-serving.md).
+
+The technical parts: the Helm chart in `k8s/model-serving/chart` renders a Deployment with a `RollingUpdate` strategy (`maxUnavailable: 0`), readiness and liveness probes, resource requests and limits, a non-root security context with a read-only file system, a Service, and a HorizontalPodAutoscaler that targets 70% CPU between one and three replicas. The chart tests render it with Helm and check each of those settings. The server tests check the probe endpoints, and that requests get a 503 until the model has loaded.
+
 ## Checks
 
 GitHub Actions runs Python tests and detection checks, builds the telemetry image, and runs Pester tests on Windows Server. The Linux workflow runs the packet analysis tests on stored captures, the `tc netem` fault drill, the Ansible lint and the molecule run on a clean Ubuntu container. The operator workflow runs gofmt, golangci-lint, the unit and envtest tests, Helm lint, and the smoke test on kind. A Kubernetes workflow lints the Helm chart, checks the rendered manifests against the Kubernetes schema, runs the chart and network policy tests, and deploys to a throwaway kind cluster. There it checks the backup and restore, and that pods outside the allowed paths cannot reach the API or the database. The sample detection report shows precision and recall on synthetic examples, not performance against real traffic.
+
+A monitoring workflow checks the Prometheus rules with promtool, runs the alert unit tests, boots the monitoring stack and confirms every scrape target is up, and lints the Ansible playbooks. A model server workflow lints the chart, runs its tests, and deploys it to kind to test the rolling update, the failed rollout and the rollback.
 
 ## Other things I've built here
 

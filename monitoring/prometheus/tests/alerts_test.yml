@@ -1,0 +1,247 @@
+# promtool unit tests for monitoring/prometheus/rules/home-server.yml.
+# Run: promtool test rules monitoring/prometheus/tests/alerts_test.yml
+# Each case feeds fake time series and checks which alerts fire, and when.
+# The "blip" cases show the for-durations filtering out routine fluctuations.
+evaluation_interval: 1m
+rule_files:
+  - ../rules/home-server.yml
+
+tests:
+  # --- Availability -------------------------------------------------------
+  - name: a two-minute LifeOS blip does not page
+    interval: 1m
+    input_series:
+      - series: 'probe_success{job="lifeos-demo", instance="https://lifeos.jacklai.ca/"}'
+        values: '1 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: LifeOSDemoDown
+        exp_alerts: []
+
+  - name: ten minutes of LifeOS failures pages
+    interval: 1m
+    input_series:
+      - series: 'probe_success{job="lifeos-demo", instance="https://lifeos.jacklai.ca/"}'
+        values: '1 0x20'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: LifeOSDemoDown
+        exp_alerts: []
+      - eval_time: 14m
+        alertname: LifeOSDemoDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              service: lifeos
+              job: lifeos-demo
+              instance: https://lifeos.jacklai.ca/
+            exp_annotations:
+              summary: "LifeOS demo is not answering at https://lifeos.jacklai.ca/"
+              runbook_url: "https://github.com/jackaI1/home-server-ops/blob/main/monitoring/runbooks/LifeOSDemoDown.md"
+
+  - name: LifeOS health endpoint failing for ten minutes pages
+    interval: 1m
+    input_series:
+      - series: 'probe_success{job="lifeos-health", instance="https://lifeos.jacklai.ca/healthz"}'
+        values: '1 1 0x20'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: LifeOSHealthDown
+        exp_alerts: []
+      - eval_time: 14m
+        alertname: LifeOSHealthDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              service: lifeos
+              job: lifeos-health
+              instance: https://lifeos.jacklai.ca/healthz
+            exp_annotations:
+              summary: "LifeOS health check is failing at https://lifeos.jacklai.ca/healthz"
+              runbook_url: "https://github.com/jackaI1/home-server-ops/blob/main/monitoring/runbooks/LifeOSHealthDown.md"
+
+  - name: an exporter that stops for three minutes does not page
+    interval: 1m
+    input_series:
+      - series: 'up{job="node", instance="node-exporter:9100"}'
+        values: '1 1 1 0 0 0 1 1 1 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: ServiceDown
+        exp_alerts: []
+
+  - name: an exporter down for longer than five minutes pages
+    interval: 1m
+    input_series:
+      - series: 'up{job="node", instance="node-exporter:9100"}'
+        values: '1 0x15'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ServiceDown
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: ServiceDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: node
+              instance: node-exporter:9100
+            exp_annotations:
+              summary: "node exporter is down on node-exporter:9100"
+              runbook_url: "https://github.com/jackaI1/home-server-ops/blob/main/monitoring/runbooks/ServiceDown.md"
+
+  # --- Certificates -------------------------------------------------------
+  - name: certificate with 10 days left warns but is not critical
+    interval: 1m
+    input_series:
+      # Expiry moves with the clock, so the remaining time stays at 10 days (864000 s).
+      - series: 'probe_ssl_earliest_cert_expiry{job="lifeos-demo", instance="https://lifeos.jacklai.ca/"}'
+        values: '864000+60x200'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TLSCertificateExpiresVerySoon
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: TLSCertificateExpiresVerySoon
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: TLSCertificateExpiresSoon
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service: lifeos
+              job: lifeos-demo
+              instance: https://lifeos.jacklai.ca/
+            exp_annotations:
+              summary: "Certificate for https://lifeos.jacklai.ca/ expires in under 14 days"
+              runbook_url: "https://github.com/jackaI1/home-server-ops/blob/main/monitoring/runbooks/TLSCertificateExpiresSoon.md"
+
+  # --- Disk capacity ------------------------------------------------------
+  - name: disk filling fast but still 80% free does not warn
+    interval: 1m
+    input_series:
+      # 900 GB free, falling 50 GB an hour. The trend says full within a day, but 80% is free.
+      - series: 'node_filesystem_avail_bytes{job="node", instance="node-exporter:9100", mountpoint="/", device="/dev/sda1", fstype="ext4"}'
+        values: '900e9-833333333x120'
+      - series: 'node_filesystem_size_bytes{job="node", instance="node-exporter:9100", mountpoint="/", device="/dev/sda1", fstype="ext4"}'
+        values: '1000e9+0x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: DiskWillFillWithin24h
+        exp_alerts: []
+
+  - name: small disk losing 1 GB an hour warns after the 30-minute window
+    interval: 1m
+    input_series:
+      # 20 GB free on a 100 GB disk, falling 1 GB an hour: empty in under 24 hours.
+      - series: 'node_filesystem_avail_bytes{job="node", instance="node-exporter:9100", mountpoint="/data", device="/dev/sdb1", fstype="ext4"}'
+        values: '20e9-16666666x180'
+      - series: 'node_filesystem_size_bytes{job="node", instance="node-exporter:9100", mountpoint="/data", device="/dev/sdb1", fstype="ext4"}'
+        values: '100e9+0x180'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: DiskWillFillWithin24h
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: DiskWillFillWithin24h
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: node
+              instance: node-exporter:9100
+              mountpoint: /data
+              device: /dev/sdb1
+              fstype: ext4
+            exp_annotations:
+              summary: "/data on node-exporter:9100 is on track to fill within 24 hours"
+              runbook_url: "https://github.com/jackaI1/home-server-ops/blob/main/monitoring/runbooks/DiskWillFillWithin24h.md"
+
+  - name: healthy disk with steady free space is silent
+    interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{job="node", instance="node-exporter:9100", mountpoint="/srv", device="/dev/sdc1", fstype="ext4"}'
+        values: '300e9+0x120'
+      - series: 'node_filesystem_size_bytes{job="node", instance="node-exporter:9100", mountpoint="/srv", device="/dev/sdc1", fstype="ext4"}'
+        values: '1000e9+0x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: DiskWillFillWithin24h
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: DiskAlmostFull
+        exp_alerts: []
+
+  - name: a short dip under 10 percent free does not page
+    interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{job="node", instance="node-exporter:9100", mountpoint="/", device="/dev/sda1", fstype="ext4"}'
+        values: '5e9+0x30'
+      - series: 'node_filesystem_size_bytes{job="node", instance="node-exporter:9100", mountpoint="/", device="/dev/sda1", fstype="ext4"}'
+        values: '100e9+0x30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: DiskAlmostFull
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: DiskAlmostFull
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: node
+              instance: node-exporter:9100
+              mountpoint: /
+              device: /dev/sda1
+              fstype: ext4
+            exp_annotations:
+              summary: "/ on node-exporter:9100 has less than 10% free"
+              runbook_url: "https://github.com/jackaI1/home-server-ops/blob/main/monitoring/runbooks/DiskAlmostFull.md"
+
+  # --- Backups ------------------------------------------------------------
+  - name: backup 25 hours old is within the window
+    interval: 1m
+    input_series:
+      # Timestamp written at time 0 and never updated again. Sampled every minute so the
+      # series never goes stale (promtool's lookback is 5 minutes).
+      - series: 'home_ops_backup_last_success_timestamp_seconds{database="lifeos"}'
+        values: '0+0x1800'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: BackupStale
+        exp_alerts: []
+
+  - name: backup 27 hours old pages after the 10-minute for-duration
+    interval: 1m
+    input_series:
+      - series: 'home_ops_backup_last_success_timestamp_seconds{database="lifeos"}'
+        values: '0+0x1800'
+    alert_rule_test:
+      - eval_time: 26h05m
+        alertname: BackupStale
+        exp_alerts: []
+      - eval_time: 27h
+        alertname: BackupStale
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              database: lifeos
+            exp_annotations:
+              summary: "Last good backup of lifeos is more than 26 hours old"
+              runbook_url: "https://github.com/jackaI1/home-server-ops/blob/main/monitoring/runbooks/BackupStale.md"
+
+  - name: missing backup timestamp is reported after an hour
+    interval: 1m
+    input_series:
+      - series: 'home_ops_backup_last_success_timestamp_seconds{database="lifeos"}'
+        values: '1 _x150'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: BackupTimestampMissing
+        exp_alerts: []
+      - eval_time: 150m
+        alertname: BackupTimestampMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "No backup timestamp has been reported for an hour"
+              runbook_url: "https://github.com/jackaI1/home-server-ops/blob/main/monitoring/runbooks/BackupTimestampMissing.md"
