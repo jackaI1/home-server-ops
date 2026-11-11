@@ -2,7 +2,7 @@
 
 I built a set of small tools for looking after a home server because I wanted a practical way to learn how to keep a system organized and respond to problems. They use sample data so I can try them without exposing my own machines or records.
 
-The inventory checks installed software against a saved public vulnerability record and highlights machines with missing ownership tags. The ticket desk sorts requests, assigns them to a queue and reports how long they wait. The alert tools test detection rules against sample logs and gather evidence for a person to review. A small telemetry service records simulated satellite passes, and a Windows module covers routine administration. The Linux part sets up the server from a clean install and shows why a backup is slow. A small Kubernetes operator runs the services from one object each.
+The inventory checks installed software against a saved public vulnerability record and highlights machines with missing ownership tags. The ticket desk sorts requests, assigns them to a queue and reports how long they wait. The alert tools test detection rules against sample logs and gather evidence for a person to review. A small telemetry service records simulated satellite passes, and a Windows module covers routine administration. The Linux part sets up the server from a clean install and shows why a backup is slow. I also added a small controller that keeps each service on the version I set, so an update is a one-line change.
 
 ## Try it
 
