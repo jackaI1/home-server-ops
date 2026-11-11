@@ -23,12 +23,12 @@ services:
     cap_add: [NET_BIND_SERVICE]
     security_opt: ["no-new-privileges:true"]
     healthcheck:
-      # Caddy's admin API answers on localhost:2019 when Caddy is running and the config loaded.
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:2019/config/"]
+      # Caddy's admin API answers on 127.0.0.1:2019 (set in the Caddyfile) once the config has loaded.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 30s
 
   app:
     # A tiny sample service that echoes the request back. Replace it with your own app image.

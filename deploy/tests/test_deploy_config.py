@@ -42,6 +42,9 @@ def test_caddy_has_a_health_check_and_only_the_port_it_needs():
     caddy = SERVICES["caddy"]
     assert caddy["healthcheck"]["test"][0] == "CMD"
     assert caddy["cap_drop"] == ["ALL"] and caddy["cap_add"] == ["NET_BIND_SERVICE"]
+    # Use an IPv4 address: busybox may resolve "localhost" to ::1 first, and Caddy listens on 127.0.0.1.
+    assert "http://127.0.0.1:2019/config/" in caddy["healthcheck"]["test"]
+    assert "admin 127.0.0.1:2019" in (DEPLOY / "compose" / "Caddyfile").read_text()
 
 
 def test_domain_and_email_come_from_the_env_file_and_must_be_set():
