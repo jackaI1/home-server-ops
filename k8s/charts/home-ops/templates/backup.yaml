@@ -71,6 +71,11 @@ spec:
                   gzip -t "${file}.partial"
                   mv "${file}.partial" "${file}"
                   echo "wrote ${file}"
+                  # Textfile for node_exporter: the time of the last verified backup.
+                  mkdir -p /backups/textfile
+                  printf 'home_ops_backup_last_success_timestamp_seconds{database="%s"} %s\n' \
+                    "${PGDATABASE}" "$(date +%s)" > /backups/textfile/home-ops-backup.prom.tmp
+                  mv /backups/textfile/home-ops-backup.prom.tmp /backups/textfile/home-ops-backup.prom
                   find /backups -name "${PGDATABASE}-*.sql.gz" -mtime "+${RETENTION_DAYS}" -print -delete
               resources:
                 {{- toYaml .Values.backup.resources | nindent 16 }}

@@ -1,0 +1,108 @@
+name: Monitoring stack, alert rules and runbook playbooks
+on:
+  pull_request:
+    paths:
+      - 'monitoring/**'
+      - 'ansible/monitoring.yml'
+      - 'ansible/runbooks/**'
+      - 'k8s/charts/home-ops/**'
+      - '.github/workflows/monitoring.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'monitoring/**'
+      - 'ansible/monitoring.yml'
+      - 'ansible/runbooks/**'
+      - 'k8s/charts/home-ops/**'
+      - '.github/workflows/monitoring.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: monitoring-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Same versions as monitoring/docker-compose.yml, so the rule tests match what runs.
+  PROMETHEUS_IMAGE: prom/prometheus:v2.55.1
+  ALERTMANAGER_IMAGE: prom/alertmanager:v0.27.0
+
+jobs:
+  rules:
+    name: Lint the config and run the promtool alert tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test tools
+        run: python -m pip install pytest==8.3.4 PyYAML==6.0.2
+      - name: Check that the files agree (runbooks, jobs, pinned images, dashboard)
+        run: python -m pytest -q monitoring/tests
+      - name: Check the Prometheus rules and config with promtool
+        run: |
+          docker run --rm -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" \
+            --entrypoint promtool "$PROMETHEUS_IMAGE" check config /etc/prometheus/prometheus.yml
+      - name: Run the alert unit tests
+        run: |
+          docker run --rm -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" \
+            --entrypoint promtool "$PROMETHEUS_IMAGE" test rules /etc/prometheus/tests/alerts_test.yml
+      - name: Check the Alertmanager routing
+        run: |
+          docker run --rm -v "$PWD/monitoring/alertmanager:/etc/alertmanager:ro" \
+            --entrypoint amtool "$ALERTMANAGER_IMAGE" check-config /etc/alertmanager/alertmanager.yml
+
+  stack:
+    name: Boot the stack and confirm every target is up
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Throwaway password for the disposable CI stack only.
+      GRAFANA_ADMIN_PASSWORD: ci-only-throwaway-password
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write a sample backup timestamp for the textfile collector
+        run: |
+          mkdir -p "$RUNNER_TEMP/textfile"
+          printf 'home_ops_backup_last_success_timestamp_seconds{database="lifeos"} %s\n' "$(date +%s)" \
+            > "$RUNNER_TEMP/textfile/home-ops-backup.prom"
+          echo "BACKUP_TEXTFILE_DIR=$RUNNER_TEMP/textfile" >> "$GITHUB_ENV"
+      - name: Validate the compose file
+        working-directory: monitoring
+        run: docker compose config --quiet
+      - name: Start the stack
+        working-directory: monitoring
+        run: docker compose up -d --wait --wait-timeout 180
+      - name: Confirm targets, backup metric and Grafana
+        run: WAIT_SECONDS=180 monitoring/scripts/check_targets.sh
+      - name: Show the logs on failure
+        if: failure()
+        working-directory: monitoring
+        run: docker compose ps; docker compose logs --tail=80
+      - name: Stop the stack and remove its volumes
+        if: always()
+        working-directory: monitoring
+        run: docker compose down -v
+
+  ansible:
+    name: Lint the monitoring playbook and runbook playbooks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install ansible-lint
+        run: python -m pip install -r ansible/requirements-dev.txt
+      - name: Lint the new playbooks
+        working-directory: ansible
+        run: ansible-lint monitoring.yml runbooks/
+      - name: Syntax-check each playbook
+        working-directory: ansible
+        run: |
+          ansible-playbook -i inventory/hosts.example.yml monitoring.yml --syntax-check
+          ansible-playbook -i inventory/hosts.example.yml runbooks/restart-service.yml --syntax-check
+          ansible-playbook -i inventory/hosts.example.yml runbooks/restore-backup.yml --syntax-check

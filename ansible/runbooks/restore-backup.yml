@@ -1,0 +1,63 @@
+---
+# Runbook: restore a database dump from the backup folder.
+# The dump must be a gzip file with a matching .sha256 file next to it.
+#   cd ansible
+#   ansible-playbook -i inventory/hosts.yml runbooks/restore-backup.yml \
+#     -e backup_file=/srv/backups/lifeos-20260101T021700Z.sql.gz \
+#     -e restore_command="gunzip -c /srv/backups/lifeos-20260101T021700Z.sql.gz | psql -d lifeos_restore" \
+#     -e restore_service=lifeos-demo
+# restore_command is a shell command you choose. Point it at a scratch database first.
+- name: Restore a database backup
+  hosts: homeserver
+  become: true
+  gather_facts: false
+  vars:
+    restore_service: ""
+  pre_tasks:
+    - name: Require the backup file and the restore command
+      ansible.builtin.assert:
+        that:
+          - backup_file is defined and backup_file | length > 0
+          - restore_command is defined and restore_command | length > 0
+        fail_msg: "Pass -e backup_file=<path> and -e restore_command=<command>"
+        quiet: true
+
+  tasks:
+    - name: Check that the dump exists and is not empty
+      ansible.builtin.stat:
+        path: "{{ backup_file }}"
+      register: dump
+
+    - name: Stop when the dump is missing
+      ansible.builtin.assert:
+        that: dump.stat.exists and dump.stat.size > 0
+        fail_msg: "{{ backup_file }} is missing or empty"
+        quiet: true
+
+    - name: Verify the checksum
+      ansible.builtin.command:
+        cmd: sha256sum -c "{{ backup_file }}.sha256"
+      changed_when: false
+
+    - name: Verify the gzip file is intact
+      ansible.builtin.command:
+        cmd: gzip -t "{{ backup_file }}"
+      changed_when: false
+
+    - name: Stop the service that uses the database
+      ansible.builtin.systemd:
+        name: "{{ restore_service }}"
+        state: stopped
+      when: restore_service | length > 0
+
+    - name: Restore the dump
+      ansible.builtin.shell:
+        cmd: "set -o pipefail; {{ restore_command }}"
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Start the service again
+      ansible.builtin.systemd:
+        name: "{{ restore_service }}"
+        state: started
+      when: restore_service | length > 0

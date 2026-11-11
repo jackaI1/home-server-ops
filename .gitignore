@@ -7,3 +7,6 @@ sla.xlsx
 ansible/inventory/hosts.yml
 ansible/.cache/
 k8s/operator/bin/
+monitoring/.env
+monitoring/textfile/*
+!monitoring/textfile/.gitkeep

@@ -1,0 +1,82 @@
+name: "Model server on kind: chart, rollout and smoke test"
+on:
+  pull_request:
+    paths:
+      - 'k8s/model-serving/**'
+      - '.github/workflows/model-serving.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'k8s/model-serving/**'
+      - '.github/workflows/model-serving.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: model-serving-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chart:
+    name: Lint and test the chart and server
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test tools
+        run: |
+          python -m pip install pytest==8.3.4 PyYAML==6.0.2
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | sudo tar -xz -C /usr/local/bin kubeconform
+      - name: Lint the chart
+        run: helm lint k8s/model-serving/chart --strict
+      - name: Run the chart and server tests
+        run: python -m pytest -q k8s/model-serving/tests
+      - name: Validate rendered manifests against the Kubernetes 1.31 schema
+        run: |
+          helm template model-server k8s/model-serving/chart --namespace model-serving > rendered.yaml
+          kubeconform -strict -summary -kubernetes-version 1.31.0 rendered.yaml
+
+  rollout:
+    name: Deploy to kind, roll out a new version, break it, roll back
+    needs: chart
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+      - uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: ci
+          wait: 120s
+      - name: Install metrics-server so the HorizontalPodAutoscaler has CPU numbers
+        run: |
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.7.2/components.yaml
+          kubectl -n kube-system patch deployment metrics-server --type=json \
+            -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+          kubectl -n kube-system rollout status deployment/metrics-server --timeout=180s
+      - name: Build two versions of the stub model server and load them into kind
+        run: |
+          docker build -t model-server:0.1.0 k8s/model-serving/app
+          docker build -t model-server:0.2.0 k8s/model-serving/app
+          kind load docker-image model-server:0.1.0 model-server:0.2.0 --name ci
+      - name: Run the rolling update and rollback check
+        run: k8s/model-serving/scripts/rollout_check.sh
+      - name: Check that the autoscaler reads CPU metrics
+        run: |
+          kubectl -n model-serving wait --for=jsonpath='{.status.conditions[?(@.type=="ScalingActive")].status}'=True \
+            hpa/model-server --timeout=180s
+          kubectl -n model-serving get hpa model-server
+      - name: Show cluster state on failure
+        if: failure()
+        run: |
+          kubectl -n model-serving get pods,deployments,hpa,events -o wide || true
+          kubectl -n model-serving describe deployment model-server || true
+          helm -n model-serving history model-server || true

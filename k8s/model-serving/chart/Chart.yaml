@@ -1,0 +1,6 @@
+apiVersion: v2
+name: model-server
+description: Runs the home server's local model service with probes, limits and autoscaling.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
