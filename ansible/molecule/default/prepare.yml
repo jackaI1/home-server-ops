@@ -1,0 +1,9 @@
+---
+# A bare Ubuntu image has no Python, which Ansible needs on the target.
+- name: Prepare the container
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Install Python and the apt bindings so Ansible can run
+      ansible.builtin.raw: apt-get update && apt-get install -y python3 python3-apt
+      changed_when: false

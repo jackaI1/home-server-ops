@@ -1,0 +1,34 @@
+---
+# Molecule builds a clean Ubuntu 24.04 container, runs the playbook roles
+# twice (the second run must change nothing), then runs verify.yml.
+# CI runs it with `molecule test` in the ansible directory.
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+driver:
+  name: docker
+platforms:
+  - name: homeserver-ubuntu-2404
+    image: ubuntu:24.04
+    command: sleep infinity
+    pre_build_image: true
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
+    ANSIBLE_HOST_KEY_CHECKING: "False"
+    # The container runs as root, and it has no sudo to escalate with.
+    ANSIBLE_BECOME: "false"
+verifier:
+  name: ansible
+scenario:
+  test_sequence:
+    - dependency
+    - destroy
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - verify
+    - destroy

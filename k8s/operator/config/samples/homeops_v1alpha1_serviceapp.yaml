@@ -1,0 +1,12 @@
+# Example: run nginx as a home server service and check its root page.
+apiVersion: homeops.local/v1alpha1
+kind: ServiceApp
+metadata:
+  name: web
+  namespace: default
+spec:
+  image: nginx
+  version: 1.27-alpine
+  port: 80
+  healthPath: /
+  replicas: 1

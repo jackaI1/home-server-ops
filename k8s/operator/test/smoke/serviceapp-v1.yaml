@@ -1,0 +1,11 @@
+apiVersion: homeops.local/v1alpha1
+kind: ServiceApp
+metadata:
+  name: smoke
+  namespace: default
+spec:
+  image: nginx
+  version: 1.27-alpine
+  port: 80
+  healthPath: /
+  replicas: 1

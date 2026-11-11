@@ -1,0 +1,7 @@
+---
+- name: Converge the home server roles
+  hosts: all
+  roles:
+    - base
+    - ssh
+    - netdiag

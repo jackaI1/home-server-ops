@@ -1,0 +1,68 @@
+---
+# Packet tools for the slow-transfer runbook (docs/slow-transfer-runbook.md).
+- name: Preseed Wireshark so only root can capture
+  ansible.builtin.debconf:
+    name: wireshark-common
+    question: wireshark-common/install-setuid
+    value: "false"
+    vtype: boolean
+
+- name: Install tcpdump and tshark
+  ansible.builtin.apt:
+    name:
+      - tcpdump
+      - tshark
+    state: present
+
+- name: Create the folder for the netdiag package
+  ansible.builtin.file:
+    path: "{{ netdiag_install_dir }}/netdiag"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create the folder for the stored sample captures
+  ansible.builtin.file:
+    path: "{{ netdiag_install_dir }}/samples"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Copy the netdiag package
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ netdiag_install_dir }}/netdiag/{{ item | basename }}"
+    owner: root
+    group: root
+    mode: "0644"
+  # role_path is ansible/roles/netdiag, so three levels up is the repository root.
+  loop: "{{ query('ansible.builtin.fileglob', role_path ~ '/../../../netdiag/*.py') }}"
+
+- name: Copy the stored sample captures for a self-check
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ netdiag_install_dir }}/samples/{{ item | basename }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ query('ansible.builtin.fileglob', role_path ~ '/../../../netdiag/samples/*.pcap') }}"
+
+- name: Install the netdiag command
+  ansible.builtin.copy:
+    dest: "{{ netdiag_bin }}"
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      PYTHONPATH={{ netdiag_install_dir }} exec /usr/bin/python3 -m netdiag "$@"
+
+- name: Create the capture folder (captures hold addresses, so only root reads them)
+  ansible.builtin.file:
+    path: "{{ netdiag_capture_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"

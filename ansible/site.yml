@@ -1,0 +1,14 @@
+---
+# Build the home server's Linux setup from a clean Ubuntu 24.04 install.
+#
+#   ansible-playbook -i inventory/hosts.yml site.yml --check --diff   # dry run first
+#   ansible-playbook -i inventory/hosts.yml site.yml
+- name: Configure the home server
+  hosts: homeserver
+  roles:
+    - role: base
+      tags: [base]
+    - role: ssh
+      tags: [ssh]
+    - role: netdiag
+      tags: [netdiag]

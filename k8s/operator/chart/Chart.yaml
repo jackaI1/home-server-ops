@@ -1,0 +1,6 @@
+apiVersion: v2
+name: serviceapp-operator
+description: Controller that runs home server services from ServiceApp objects (Deployments and Services) and reports health.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

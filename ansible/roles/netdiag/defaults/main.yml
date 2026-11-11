@@ -1,0 +1,4 @@
+---
+netdiag_install_dir: /opt/netdiag
+netdiag_bin: /usr/local/bin/netdiag
+netdiag_capture_dir: /var/lib/netdiag/captures

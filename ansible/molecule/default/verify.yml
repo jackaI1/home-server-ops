@@ -1,0 +1,39 @@
+---
+- name: Verify the home server setup
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Packages from the base role are installed
+      ansible.builtin.command: "dpkg -s {{ item }}"
+      loop: [unattended-upgrades, jq, openssh-server, tcpdump, tshark]
+      register: installed
+      changed_when: false
+      failed_when: installed.rc != 0
+
+    - name: The hardened SSH drop-in is in place
+      ansible.builtin.command: grep -qx "PasswordAuthentication no" /etc/ssh/sshd_config.d/90-home-server.conf
+      changed_when: false
+
+    - name: The TCP tuning file is in place
+      ansible.builtin.command: grep -q "net.core.rmem_max = 16777216" /etc/sysctl.d/90-home-server.conf
+      changed_when: false
+
+    - name: The netdiag command runs
+      ansible.builtin.command: /usr/local/bin/netdiag --help
+      changed_when: false
+
+    - name: A clean stored capture passes the checks
+      ansible.builtin.command: /usr/local/bin/netdiag analyze /opt/netdiag/samples/clean-transfer.pcap --fail-on-issues
+      changed_when: false
+
+    - name: The slow stored capture is flagged
+      ansible.builtin.command: /usr/local/bin/netdiag analyze /opt/netdiag/samples/slow-transfer.pcap --fail-on-issues
+      register: slow_capture
+      changed_when: false
+      failed_when: slow_capture.rc != 1
+
+    - name: The capture folder is readable by root only
+      ansible.builtin.stat:
+        path: /var/lib/netdiag/captures
+      register: capture_dir
+      failed_when: capture_dir.stat.mode != '0750'
