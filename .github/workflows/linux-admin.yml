@@ -44,8 +44,6 @@ jobs:
     name: Inject packet loss with tc netem and check the report
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      NETDIAG_DRILL_OUT: ${{ runner.temp }}/drill
     steps:
       - uses: actions/checkout@v4
       - name: Install tshark and tcpdump
@@ -53,6 +51,8 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tshark tcpdump
       - name: Run the drill
+        env:
+          NETDIAG_DRILL_OUT: ${{ runner.temp }}/drill
         run: bash netdiag/drill/netem_drill.sh
       - name: Keep the drill report
         if: always()
