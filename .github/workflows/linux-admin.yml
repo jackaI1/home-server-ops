@@ -93,6 +93,9 @@ jobs:
           python-version: '3.12'
       - name: Install Ansible and molecule
         run: python -m pip install -r ansible/requirements-dev.txt
+      - name: Install the Ansible collections molecule needs
+        working-directory: ansible
+        run: ansible-galaxy collection install -r requirements.yml
       - name: Run molecule test (converge, idempotence, verify)
         working-directory: ansible
         run: molecule test
