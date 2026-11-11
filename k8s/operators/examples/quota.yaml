@@ -1,0 +1,8 @@
+# GPU quota for the job queue. clusterGPUs is the total the cluster can hand out.
+# teams is the most GPUs each team may hold at once. resourceName is the extended resource the
+# GPU device plugin advertises (NVIDIA's plugin uses nvidia.com/gpu).
+clusterGPUs: 2
+resourceName: nvidia.com/gpu
+teams:
+  vision: 1
+  benchmarks: 1

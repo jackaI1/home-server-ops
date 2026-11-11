@@ -48,3 +48,17 @@ rollout:
   maxSurge: 1
   maxUnavailable: 0
   revisionHistoryLimit: 5
+
+# GPU placement. Turn this on for a node that has an NVIDIA GPU (the NVIDIA device plugin must run there).
+# The pod asks for one GPU and only lands on nodes that carry the label below.
+gpu:
+  enabled: false
+  count: 1
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+  tolerationKey: nvidia.com/gpu
+
+# Prometheus scrapes /metrics on the server port (request counts and latency histogram).
+metrics:
+  enabled: true
+  path: /metrics

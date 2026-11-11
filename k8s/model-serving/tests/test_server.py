@@ -70,3 +70,18 @@ def test_generate_rejects_bad_input(server, payload):
 def test_unknown_paths_are_404(server):
     _, base = server
     assert call(f"{base}/nope")[0] == 404
+
+
+def test_metrics_count_requests_and_latency(server):
+    module, base = server
+    module.METRICS = module.Metrics()  # start from zero so the counts are exact
+    call(base + "/v1/generate", json.dumps({"prompt": "hi"}).encode())
+    call(base + "/v1/generate", b"{}")  # 400: no prompt
+    call(base + "/ready")
+    text = urllib.request.urlopen(base + "/metrics", timeout=5).read().decode()
+    assert 'model_requests_total{route="generate",code="200"} 1' in text
+    assert 'model_requests_total{route="generate",code="400"} 1' in text
+    assert 'model_requests_total{route="probe",code="200"} 1' in text
+    assert 'model_request_duration_seconds_count{route="generate"} 2' in text
+    assert 'model_request_duration_seconds_bucket{route="generate",le="+Inf"} 2' in text
+    assert "# TYPE model_request_duration_seconds histogram" in text

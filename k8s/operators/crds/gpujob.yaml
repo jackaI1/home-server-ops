@@ -1,0 +1,75 @@
+# The GPUJob custom resource. A job names its team, the GPUs it needs and the image to run.
+# The controller writes the status: phase (Queued, Admitted, Succeeded or Failed), the reason,
+# the position in the queue, and the name of the batch Job that runs it.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: gpujobs.homeops.local
+spec:
+  group: homeops.local
+  scope: Namespaced
+  names:
+    kind: GPUJob
+    listKind: GPUJobList
+    plural: gpujobs
+    singular: gpujob
+    shortNames: [gj]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Team
+          type: string
+          jsonPath: .spec.team
+        - name: GPUs
+          type: integer
+          jsonPath: .spec.gpus
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Reason
+          type: string
+          jsonPath: .status.reason
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [team, gpus, image]
+              properties:
+                team:
+                  type: string
+                  minLength: 1
+                gpus:
+                  type: integer
+                  minimum: 1
+                  maximum: 8
+                image:
+                  type: string
+                command:
+                  type: array
+                  items:
+                    type: string
+                priority:
+                  type: integer
+                  default: 0
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum: [Queued, Admitted, Succeeded, Failed]
+                reason:
+                  type: string
+                message:
+                  type: string
+                position:
+                  type: integer
+                jobName:
+                  type: string
+                admittedAt:
+                  type: string

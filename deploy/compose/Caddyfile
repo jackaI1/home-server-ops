@@ -1,0 +1,13 @@
+# Caddy reads DOMAIN and ACME_EMAIL from the environment that Compose sets.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+	}
+	reverse_proxy app:80
+}
