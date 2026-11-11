@@ -16,15 +16,14 @@ concurrency:
   group: serviceapp-operator-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    working-directory: k8s/operator
-
 jobs:
   build-test-lint:
     name: Build, lint, unit tests and envtest
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: k8s/operator
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -53,7 +52,6 @@ jobs:
           grep -q -- "--- PASS: TestReconcilerEnvtest" envtest.log
           if grep -q -- "--- SKIP: TestReconcilerEnvtest" envtest.log; then echo "envtest was skipped"; exit 1; fi
       - name: Lint and render the Helm chart
-        working-directory: k8s/operator
         run: |
           helm lint chart --strict
           helm template serviceapp-operator chart --namespace homeops-system > rendered.yaml
