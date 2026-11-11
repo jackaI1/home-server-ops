@@ -1,0 +1,13 @@
+# Services the home cluster should always run. selfheal restores anything deleted or changed by hand.
+namespace: home-apps
+services:
+  - name: notes
+    image: nginx:1.27-alpine
+    port: 80
+    replicas: 1
+    host: notes.home.test
+  - name: wiki
+    image: nginx:1.27-alpine
+    port: 80
+    replicas: 2
+    host: wiki.home.test

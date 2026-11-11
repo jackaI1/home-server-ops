@@ -105,3 +105,25 @@ def test_version_comes_from_the_image_tag(tmp_path):
     assert c["image"] == "model-server:0.2.0"
     env = {e["name"]: e["value"] for e in c["env"]}
     assert env["VERSION"] == "0.2.0"
+
+
+def test_gpu_is_off_by_default(tmp_path):
+    pod = find(render(tmp_path), "Deployment")["spec"]["template"]["spec"]
+    assert "nodeSelector" not in pod
+    assert "nvidia.com/gpu" not in container(render(tmp_path))["resources"]["limits"]
+
+
+def test_gpu_pins_pod_to_gpu_node_and_requests_one_gpu(tmp_path):
+    docs = render(tmp_path, {"gpu": {"enabled": True}})
+    pod = find(docs, "Deployment")["spec"]["template"]["spec"]
+    assert pod["nodeSelector"] == {"nvidia.com/gpu.present": "true"}
+    assert {"key": "nvidia.com/gpu", "operator": "Exists", "effect": "NoSchedule"} in pod["tolerations"]
+    limits = pod["containers"][0]["resources"]["limits"]
+    assert limits["nvidia.com/gpu"] == 1
+    # The GPU request must not drop the CPU and memory limits.
+    assert limits["cpu"] and limits["memory"]
+
+
+def test_metrics_port_is_annotated_for_prometheus(tmp_path):
+    ann = find(render(tmp_path), "Deployment")["spec"]["template"]["metadata"]["annotations"]
+    assert ann == {"prometheus.io/scrape": "true", "prometheus.io/port": "8080", "prometheus.io/path": "/metrics"}

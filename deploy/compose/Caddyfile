@@ -1,0 +1,15 @@
+# Caddy reads DOMAIN and ACME_EMAIL from the environment that Compose sets.
+{
+	email {$ACME_EMAIL}
+	# Only this container's loopback address, so the health check and nothing else reaches the admin API.
+	admin 127.0.0.1:2019
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+	}
+	reverse_proxy app:80
+}

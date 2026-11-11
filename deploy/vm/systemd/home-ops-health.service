@@ -1,0 +1,9 @@
+[Unit]
+Description=Check home server services and TLS certificates
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/home-ops/health.env
+ExecStart=/usr/bin/python3 __INSTALL_DIR__/health/check_health.py

@@ -1,0 +1,51 @@
+name: "Slurm GPU queue: rules tests, config checks and sbatch scripts"
+on:
+  pull_request:
+    paths:
+      - 'slurm/**'
+      - '.github/workflows/slurm.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'slurm/**'
+      - '.github/workflows/slurm.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: slurm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  queue:
+    name: Test the queue rules and check the configs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test tools
+        run: python -m pip install pytest==8.3.4 PyYAML==6.0.2
+      - name: Test the quota, preemption, backfill and fair-share rules
+        run: python -m pytest -q slurm/tests
+      - name: Lint the shell scripts
+        run: shellcheck slurm/scripts/submit_batch.sh slurm/etc/setup-accounts.sh
+      - name: Check that every sbatch script parses its own options
+        run: |
+          for f in slurm/jobs/*.sbatch; do
+            bash -n "$f"
+            grep -q '^#SBATCH --partition=' "$f"
+          done
+      - name: Dry-run a mixed batch
+        run: |
+          printf 'review /data/drawings/rev-01.pdf\nbench llama-3.1-8b\n' > batch.txt
+          slurm/scripts/submit_batch.sh --dry-run batch.txt
+      - name: Produce the demo occupancy and fairness report
+        run: |
+          python -m slurm.sim.report --demo | tee slurm-demo-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slurm-demo-report
+          path: slurm-demo-report.md

@@ -1,0 +1,69 @@
+name: "Kubernetes operators: unit tests and kind end-to-end"
+on:
+  pull_request:
+    paths:
+      - 'k8s/operators/**'
+      - '.github/workflows/k8s-operators.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'k8s/operators/**'
+      - '.github/workflows/k8s-operators.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: k8s-operators-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Reconciliation unit tests and config checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: k8s/operators
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements.txt
+      - name: Run the unit tests (the kind tests skip here)
+        run: python -m pytest -q tests
+      - name: Check the examples and the CRD
+        run: |
+          python -c "from homeops_ops import selfheal, gpuqueue; selfheal.load_manifest('examples/services.yaml'); gpuqueue.load_quota('examples/quota.yaml')"
+          python -c "import yaml; yaml.safe_load_all(open('crds/gpujob.yaml').read())"
+      - name: Lint the e2e script
+        run: shellcheck scripts/e2e-kind.sh
+
+  kind:
+    name: Run both controllers on kind and test self-healing and the GPU queue
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: k8s/operators
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements.txt
+      - uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: ci
+          wait: 120s
+      - name: Run the end-to-end script
+        env:
+          SKIP_CREATE: '1'
+          CLUSTER: ci
+        run: scripts/e2e-kind.sh
+      - name: Show controller logs on failure
+        if: failure()
+        run: |
+          tail -n 80 selfheal.log gpuqueue.log || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -n 40 || true
