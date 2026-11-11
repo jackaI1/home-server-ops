@@ -56,12 +56,14 @@ jobs:
           sed -i 's/^DOMAIN=.*/DOMAIN=localhost/; s/^ACME_EMAIL=.*/ACME_EMAIL=ci@example.com/' "$INSTALL_DIR/compose/.env"
           docker compose --project-directory "$INSTALL_DIR/compose" up -d --wait
           docker compose --project-directory "$INSTALL_DIR/compose" ps
+      # Caddy's local certificates last about 12 hours, so the CI threshold is 0 days. The check still
+      # verifies the chain and fails if the certificate has already expired. A public domain keeps the 14-day default.
       - name: Check the service and its certificate
         run: |
           docker compose --project-directory "$INSTALL_DIR/compose" cp \
             caddy:/data/caddy/pki/authorities/local/root.crt "$RUNNER_TEMP/caddy-root.crt"
           python3 "$INSTALL_DIR/health/check_health.py" \
-            --url https://localhost/ --tls localhost:443 --cafile "$RUNNER_TEMP/caddy-root.crt" --warn-days 1
+            --url https://localhost/ --tls localhost:443 --cafile "$RUNNER_TEMP/caddy-root.crt" --warn-days 0
       - name: Check that a dead service makes the check fail
         run: |
           set +e
@@ -74,7 +76,7 @@ jobs:
           docker compose --project-directory "$INSTALL_DIR/compose" down
           docker compose --project-directory "$INSTALL_DIR/compose" up -d --wait
           python3 "$INSTALL_DIR/health/check_health.py" \
-            --url https://localhost/ --tls localhost:443 --cafile "$RUNNER_TEMP/caddy-root.crt" --warn-days 1
+            --url https://localhost/ --tls localhost:443 --cafile "$RUNNER_TEMP/caddy-root.crt" --warn-days 0
       - name: Show logs on failure
         if: failure()
         run: docker compose --project-directory "$INSTALL_DIR/compose" logs --tail 80 || true
