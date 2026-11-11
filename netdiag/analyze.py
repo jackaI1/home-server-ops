@@ -203,13 +203,16 @@ def summarize_flows(packets: list[TcpPacket], retransmitted: set[int]) -> tuple[
 
 def run_tshark(tshark: str, pcap: Path, display_filter: str, fields: tuple[str, ...]) -> list[str]:
     cmd = [
-        tshark, "-r", str(pcap), "-n", "-Y", display_filter,
+        tshark, "-r", "-", "-n", "-Y", display_filter,
         "-T", "fields", "-E", "separator=\t", "-E", "occurrence=f",
     ]
     for name in fields:
         cmd += ["-e", name]
+    # The capture is fed on stdin. Wireshark 4.x on newer Ubuntu images sandboxes
+    # file access and refused to open some paths given with -r <file>.
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=900, check=False)
+        with pcap.open("rb") as stream:
+            proc = subprocess.run(cmd, stdin=stream, capture_output=True, text=True, timeout=900, check=False)
     except subprocess.TimeoutExpired as exc:
         raise AnalysisError(f"tshark took longer than 15 minutes on {pcap}") from exc
     if proc.returncode != 0:
