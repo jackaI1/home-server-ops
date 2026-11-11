@@ -1,0 +1,24 @@
+---
+- name: Install the OpenSSH server
+  ansible.builtin.apt:
+    name: openssh-server
+    state: present
+
+- name: Create the privilege separation folder that sshd checks for
+  ansible.builtin.file:
+    path: /run/sshd
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Write the hardened SSH settings
+  ansible.builtin.template:
+    src: 90-home-server.conf.j2
+    dest: /etc/ssh/sshd_config.d/90-home-server.conf
+    owner: root
+    group: root
+    mode: "0644"
+    # sshd refuses to start with a broken config, so check it before it is put in place.
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart sshd

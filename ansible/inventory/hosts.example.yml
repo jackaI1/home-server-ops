@@ -1,0 +1,9 @@
+# Copy this file to hosts.yml and put in your own host name or address.
+# hosts.yml is in .gitignore so your real address stays out of Git.
+all:
+  children:
+    homeserver:
+      hosts:
+        home-server:
+          ansible_host: 192.0.2.10   # example address from the documentation range
+          ansible_user: admin        # a sudo-capable account you created during install

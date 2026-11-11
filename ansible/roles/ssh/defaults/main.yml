@@ -1,0 +1,7 @@
+---
+ssh_port: 22
+ssh_allow_users:
+  - admin
+ssh_password_auth: false
+ssh_permit_root_login: "no"
+ssh_max_auth_tries: 3

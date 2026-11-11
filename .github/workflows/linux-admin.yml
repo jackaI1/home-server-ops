@@ -1,0 +1,98 @@
+name: Linux setup, packet diagnostics and fault drill
+on:
+  pull_request:
+    paths:
+      - 'netdiag/**'
+      - 'ansible/**'
+      - 'docs/slow-transfer-runbook.md'
+      - '.github/workflows/linux-admin.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'netdiag/**'
+      - 'ansible/**'
+      - 'docs/slow-transfer-runbook.md'
+      - '.github/workflows/linux-admin.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: linux-admin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  netdiag-tests:
+    name: Unit tests on stored captures
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install tshark and pytest
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tshark tcpdump
+          python -m pip install pytest==8.3.4
+      - name: Run the parser and report tests
+        run: python -m pytest -q netdiag/tests
+      - name: Check the command-line help
+        run: python -m netdiag --help
+
+  fault-drill:
+    name: Inject packet loss with tc netem and check the report
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NETDIAG_DRILL_OUT: ${{ runner.temp }}/drill
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tshark and tcpdump
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tshark tcpdump
+      - name: Run the drill
+        run: bash netdiag/drill/netem_drill.sh
+      - name: Keep the drill report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: netem-drill-report
+          path: ${{ runner.temp }}/drill
+          if-no-files-found: ignore
+
+  ansible-lint:
+    name: Check the playbook syntax and lint the roles
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Ansible and molecule
+        run: python -m pip install -r ansible/requirements-dev.txt
+      - name: Syntax-check the playbooks
+        working-directory: ansible
+        run: |
+          ansible-playbook -i inventory/hosts.example.yml site.yml --syntax-check
+          ansible-playbook -i inventory/hosts.example.yml molecule/default/converge.yml --syntax-check
+      - name: Lint
+        working-directory: ansible
+        run: ansible-lint
+
+  molecule:
+    name: Build a clean Ubuntu 24.04 container and verify the roles
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Ansible and molecule
+        run: python -m pip install -r ansible/requirements-dev.txt
+      - name: Run molecule test (converge, idempotence, verify)
+        working-directory: ansible
+        run: molecule test

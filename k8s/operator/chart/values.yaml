@@ -1,0 +1,36 @@
+# Settings for the ServiceApp operator. Override with -f or --set.
+image:
+  repository: serviceapp-operator
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# Leader election lets a second replica take over if the first one stops.
+leaderElect: false
+
+# How often each ServiceApp is re-checked, in Go duration format.
+requeueAfter: 30s
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

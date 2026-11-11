@@ -1,0 +1,9 @@
+# Managed by Ansible (roles/ssh). Edit the playbook, not this file.
+# Password logins are off, so make sure your key works before you apply this.
+Port {{ ssh_port }}
+PermitRootLogin {{ ssh_permit_root_login }}
+PasswordAuthentication {{ 'yes' if ssh_password_auth else 'no' }}
+KbdInteractiveAuthentication no
+MaxAuthTries {{ ssh_max_auth_tries }}
+AllowUsers {{ ssh_allow_users | join(' ') }}
+X11Forwarding no

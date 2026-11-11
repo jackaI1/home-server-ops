@@ -1,0 +1,4 @@
+# Managed by Ansible (roles/base). Edit the playbook, not this file.
+{% for key, value in base_sysctl.items() %}
+{{ key }} = {{ value }}
+{% endfor %}

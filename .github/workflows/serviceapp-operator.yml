@@ -1,0 +1,90 @@
+name: ServiceApp operator (Go, controller-runtime, Helm)
+on:
+  pull_request:
+    paths:
+      - 'k8s/operator/**'
+      - '.github/workflows/serviceapp-operator.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'k8s/operator/**'
+      - '.github/workflows/serviceapp-operator.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: serviceapp-operator-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: k8s/operator
+
+jobs:
+  build-test-lint:
+    name: Build, lint, unit tests and envtest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: k8s/operator/go.mod
+          cache-dependency-path: k8s/operator/go.sum
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - name: Vet and build
+        run: |
+          go vet ./...
+          go build ./...
+      - name: Lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.1.6
+          working-directory: k8s/operator
+      - name: Unit tests
+        run: go test -count=1 ./...
+      - name: Envtest reconciler tests (real kube-apiserver and etcd)
+        run: |
+          make test-envtest | tee envtest.log
+          grep -q -- "--- PASS: TestReconcilerEnvtest" envtest.log
+          if grep -q -- "--- SKIP: TestReconcilerEnvtest" envtest.log; then echo "envtest was skipped"; exit 1; fi
+      - name: Lint and render the Helm chart
+        working-directory: k8s/operator
+        run: |
+          helm lint chart --strict
+          helm template serviceapp-operator chart --namespace homeops-system > rendered.yaml
+          grep -q "kind: CustomResourceDefinition" <(helm template serviceapp-operator chart --include-crds --namespace homeops-system)
+
+  kind-smoke:
+    name: Install the chart on kind and run the smoke test
+    needs: build-test-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: operator
+          wait: 120s
+      - name: Build the operator image and load it into kind
+        run: |
+          docker build -t serviceapp-operator:ci k8s/operator
+          kind load docker-image serviceapp-operator:ci --name operator
+      - name: Install the chart
+        run: |
+          helm install serviceapp-operator k8s/operator/chart \
+            --namespace homeops-system --create-namespace \
+            --set image.tag=ci --set image.pullPolicy=Never \
+            --wait --timeout 5m
+      - name: Run the smoke test
+        run: SMOKE_TIMEOUT=300s k8s/operator/test/smoke/smoke.sh
+      - name: Show operator logs on failure
+        if: failure()
+        run: |
+          kubectl -n homeops-system get pods -o wide || true
+          kubectl -n homeops-system logs deployment/serviceapp-operator-serviceapp-operator --tail=80 || true
+          kubectl get serviceapps -A -o yaml || true
