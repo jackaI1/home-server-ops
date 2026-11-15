@@ -1,0 +1,36 @@
+// Job "lifeos-deploy": start the image that lifeos-build made, on this home server.
+// Set it up as a Pipeline job: Definition "Pipeline script from SCM", repo home-server-ops, Script Path
+// deploy/jenkins/Jenkinsfile.deploy.
+//
+// The secret env file for LifeOS is stored in Jenkins' credential store under the ID lifeos-env-file
+// (kind: Secret file). It never appears in this repository.
+pipeline {
+    agent any
+
+    options {
+        timeout(time: 20, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        string(name: 'IMAGE', description: 'Image from lifeos-build, for example lifeos:42')
+        string(name: 'DEPLOY_DIR', defaultValue: '/opt/lifeos', description: 'Where the LifeOS stack runs on this host')
+    }
+
+    stages {
+        stage('Check the image exists') {
+            steps {
+                sh 'test -n "$IMAGE"'
+                sh 'docker image inspect "$IMAGE" > /dev/null'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                withCredentials([file(credentialsId: 'lifeos-env-file', variable: 'LIFEOS_ENV_FILE')]) {
+                    sh 'deploy/jenkins/deploy-lifeos.sh "$IMAGE" "$LIFEOS_ENV_FILE" "$DEPLOY_DIR"'
+                }
+            }
+        }
+    }
+}

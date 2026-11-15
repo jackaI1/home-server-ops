@@ -1,0 +1,59 @@
+name: Wi-Fi access point config tests and netns check
+on:
+  pull_request:
+    paths:
+      - 'wifi_ap/**'
+      - '.github/workflows/wifi-ap.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'wifi_ap/**'
+      - '.github/workflows/wifi-ap.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: wifi-ap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  config:
+    name: Test the renderer and check the generated files with the real tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test tools and the dnsmasq and nftables binaries
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y dnsmasq-base nftables
+          python -m pip install pytest==8.3.4 PyYAML==6.0.2
+      - name: Run the config and renderer tests
+        run: python -m pytest -q wifi_ap/tests
+      - name: Lint the netns scripts
+        run: shellcheck wifi_ap/netns/test_netns.sh wifi_ap/netns/apply_lease.sh
+      - name: Check the example file with dnsmasq and nft
+        run: |
+          d="$RUNNER_TEMP/render"
+          WIFI_AP_PASSPHRASE=ci-only-passphrase python -m wifi_ap render wifi_ap/examples/example.yaml \
+            --out "$d" --state-dir "$RUNNER_TEMP" --ap-interface wlan-ap --uplink-interface up-ap
+          python -m wifi_ap verify "$d"
+          dnsmasq --test -C "$d/dnsmasq.conf"
+          sudo nft -c -f "$d/nftables.nft"
+
+  netns:
+    name: Run the access point in network namespaces (DHCP, allowed and blocked traffic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the tools the test uses
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y dnsmasq-base nftables udhcpc \
+            iproute2 util-linux python3-yaml
+      - name: Run the namespace test as root
+        run: sudo WIFI_AP_PASSPHRASE=ci-only-passphrase PYTHON=/usr/bin/python3 bash wifi_ap/netns/test_netns.sh

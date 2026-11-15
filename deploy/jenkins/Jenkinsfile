@@ -1,0 +1,113 @@
+// Job "lifeos-build": check out LifeOS, lint, type check, test, build the Docker image.
+// When the branch is main and everything passes, it starts the "lifeos-deploy" job with the new image.
+// Set it up as a Pipeline job: Definition "Pipeline script from SCM", repo home-server-ops, Script Path
+// deploy/jenkins/Jenkinsfile.
+pipeline {
+    agent any
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        string(name: 'LIFEOS_REPO', defaultValue: 'https://github.com/jackaI1/lifeos-open.git', description: 'Git URL of LifeOS')
+        string(name: 'LIFEOS_BRANCH', defaultValue: 'main', description: 'Branch of LifeOS to build')
+    }
+
+    stages {
+        stage('Check out LifeOS') {
+            steps {
+                dir('lifeos') {
+                    git url: params.LIFEOS_REPO, branch: params.LIFEOS_BRANCH
+                }
+            }
+        }
+
+        stage('Install dependencies') {
+            agent {
+                docker {
+                    image 'node:24.11.1-bookworm-slim'
+                    reuseNode true
+                }
+            }
+            steps {
+                dir('lifeos') {
+                    sh 'npm ci'
+                }
+            }
+        }
+
+        stage('Lint') {
+            agent {
+                docker {
+                    image 'node:24.11.1-bookworm-slim'
+                    reuseNode true
+                }
+            }
+            steps {
+                dir('lifeos') {
+                    sh 'npm run lint'
+                }
+            }
+        }
+
+        stage('Type check') {
+            agent {
+                docker {
+                    image 'node:24.11.1-bookworm-slim'
+                    reuseNode true
+                }
+            }
+            steps {
+                dir('lifeos') {
+                    sh 'npm run typecheck'
+                }
+            }
+        }
+
+        stage('Test') {
+            agent {
+                docker {
+                    image 'node:24.11.1-bookworm-slim'
+                    reuseNode true
+                }
+            }
+            steps {
+                dir('lifeos') {
+                    // Write a JUnit report for Jenkins, and print the readable output to the log.
+                    sh 'mkdir -p reports && node --test --test-reporter=spec --test-reporter=junit --test-reporter-destination=stdout --test-reporter-destination=reports/junit.xml test/*.test.mjs'
+                }
+            }
+            post {
+                always {
+                    junit testResults: 'lifeos/reports/junit.xml', allowEmptyResults: true
+                }
+            }
+        }
+
+        stage('Build image') {
+            steps {
+                // The LifeOS dependencies were installed inside a container, so drop them before the image
+                // build: they would otherwise be copied into the build context.
+                sh 'rm -rf lifeos/node_modules'
+                sh 'docker build -f deploy/jenkins/lifeos.Dockerfile -t "lifeos:$BUILD_NUMBER" lifeos'
+                sh 'echo "lifeos:$BUILD_NUMBER" > lifeos-image.txt'
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'lifeos/reports/**, lifeos-image.txt', allowEmptyArchive: true
+        }
+        success {
+            script {
+                if (params.LIFEOS_BRANCH == 'main') {
+                    build job: 'lifeos-deploy', parameters: [string(name: 'IMAGE', value: "lifeos:${env.BUILD_NUMBER}")], wait: true
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,36 @@
+# Jenkins controller for the home server. It runs beside the VM stack in deploy/compose.
+# The web UI is published on 127.0.0.1 only: reach it from a laptop with an SSH tunnel, never on the LAN.
+#
+#   cp deploy/jenkins/.env.example deploy/jenkins/.env      # set DOCKER_GID to the docker group id
+#   docker compose -f deploy/jenkins/compose.yml up -d --build --wait
+#   ssh -L 8080:127.0.0.1:8080 home-server                  # then open http://127.0.0.1:8080
+name: jenkins
+
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: home-ops/jenkins:2.541.3-lts-jdk17
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # Jobs, build history and credentials live here, so the controller survives an image update.
+      - jenkins_home:/var/jenkins_home
+      # Builds run `docker build` through this socket. Anyone who can edit a job can run containers as root
+      # on this host, so keep Jenkins login on and do not share the tunnel.
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "${DOCKER_GID:-999}"
+    security_opt:
+      - "no-new-privileges:true"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/login"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+volumes:
+  jenkins_home:
