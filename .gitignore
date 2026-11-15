@@ -10,3 +10,4 @@ k8s/operator/bin/
 monitoring/.env
 monitoring/textfile/*
 !monitoring/textfile/.gitkeep
+deploy/jenkins/.env

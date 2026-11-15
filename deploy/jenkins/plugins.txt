@@ -1,0 +1,9 @@
+# Plugins the two pipelines need. Pipeline runs the Jenkinsfiles, git checks out LifeOS,
+# docker-workflow runs the test stages in a Node container, junit reads the test report,
+# credentials-binding gives the deploy job its secret env file, timestamps adds times to the log.
+workflow-aggregator
+git
+docker-workflow
+junit
+credentials-binding
+timestamps

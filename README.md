@@ -211,11 +211,44 @@ The technical parts: `benchmarks/jobs/` holds five fio job files (sequential and
 
 The limit is that CI runs on a virtual disk, so it checks that the code works, not how fast a disk is. The first numbers from my own NAS are still to come.
 
+## A separate Wi-Fi network for the desk node
+
+I built a Wi-Fi access point for my ESP32 desk node and my other small sensors because I did not want them on my main home network. An ESP32 is a cheap microcontroller board with Wi-Fi built in. Devices like that are easy to break into, so they get their own network that can reach one thing: the sensor port on my home server.
+
+The `wifi_ap` tool reads one YAML file that describes the whole setup. The file has the network name, the channel, the list of devices with a fixed address for each, and the one address and port the devices may reach. From that one file it writes the three configs that the Linux services need. The Wi-Fi password is read from an environment variable at the moment the files are written, so it never sits in the YAML.
+
+To try it on a sample file:
+
+```sh
+python -m wifi_ap check wifi_ap/examples/example.yaml
+WIFI_AP_PASSPHRASE='a long passphrase' python -m wifi_ap render wifi_ap/examples/example.yaml --out ./rendered
+python -m wifi_ap verify ./rendered
+```
+
+The setup steps for a real box are in [Wi-Fi access point notes](docs/wifi-access-point.md).
+
+The technical parts: `wifi_ap/config.py` checks the YAML, and rejects a bad MAC address, an address outside the subnet or the DHCP range, a duplicate name, or an unknown key. `wifi_ap/render.py` writes hostapd, which runs the WPA2 network and accepts only listed MAC addresses; dnsmasq, which hands out DHCP leases and has static `dhcp-host` entries for each device; and nftables, which closes forwarding by default and opens one TCP path to the sensor. Masquerading means the home network only sees the box's own address. `wifi_ap/parsers.py` reads the generated files back, and the tests check the result with `dnsmasq --test` and `nft -c`. The netns test in `wifi_ap/netns/test_netns.sh` builds three Linux network namespaces, which are separate network stacks on one machine. One stands for the access point, one for the home network with the sensor and a laptop that must stay unreachable, and one for a client. A virtual Ethernet pair stands in for the Wi-Fi link. The test checks that a known device gets its fixed address over DHCP, that the sensor answers, that the laptop and the other port are silently dropped, and that an unknown MAC address gets no lease. Real Wi-Fi is not tested, because the CI runners have no radio.
+
+## Jenkins builds and deploys LifeOS
+
+I built a Jenkins setup for LifeOS because I was running its lint, type checks and tests by hand on the server before each update, and I sometimes skipped a step. Jenkins is a small server that runs a fixed list of steps every time I push a change, and keeps the results. The list of steps lives in a file called a Jenkinsfile, so the process is the same every time.
+
+The controller runs on the home server in a container, with its settings and history in a named volume so an image update does not lose them. Its web page is on the server's loopback address only, so I reach it through an SSH tunnel from my laptop. The first job, `lifeos-build`, checks out `lifeos-open`, installs its dependencies, runs the linter, the type checker and the test suite, writes the test results where Jenkins can show them, and builds a Docker image in several stages. The image is the smallest set of files that runs LifeOS. The second job, `lifeos-deploy`, starts only after the build passes on `main`. It takes LifeOS' secret env file from Jenkins' own credential store, so the secret never goes into the repository. If the new version does not pass its health check, the script starts the previous image again.
+
+To set up the controller and the two jobs, follow [Jenkins notes](docs/jenkins.md). The short version, on the server:
+
+```sh
+cp deploy/jenkins/.env.example deploy/jenkins/.env
+docker compose -f deploy/jenkins/compose.yml up -d --build --wait
+```
+
+The technical parts: `deploy/jenkins/compose.yml` pins the Jenkins LTS image, publishes port 8080 on 127.0.0.1 only, and keeps `/var/jenkins_home` in a volume. The Dockerfile adds the Docker CLI and the plugins in `plugins.txt`. `deploy/jenkins/Jenkinsfile` runs the stages in order and archives the JUnit report. `deploy/jenkins/lifeos.Dockerfile` has three stages: dependencies, the build, and a runtime stage with production dependencies only, running as the `node` user. `deploy/jenkins/deploy-lifeos.sh` copies the compose file and the env file, starts the stack, waits for the health check, and rolls back on failure. `deploy/tests/test_jenkins.py` checks the compose file and both Jenkinsfiles, and runs the deploy script against a fake `docker` to test the rollback.
+
 ## Checks
 
 GitHub Actions runs Python tests and detection checks, builds the telemetry image, and runs Pester tests on Windows Server. The storage benchmark workflow runs its parser, plot and compare tests, then a short real fio run on Ubuntu. The Linux workflow runs the packet analysis tests on stored captures, the `tc netem` fault drill, the Ansible lint and the molecule run on a clean Ubuntu container. The operator workflow runs gofmt, golangci-lint, the unit and envtest tests, Helm lint, and the smoke test on kind. A Kubernetes workflow lints the Helm chart, checks the rendered manifests against the Kubernetes schema, runs the chart and network policy tests, and deploys to a throwaway kind cluster. There it checks the backup and restore, and that pods outside the allowed paths cannot reach the API or the database. The sample detection report shows precision and recall on synthetic examples, not performance against real traffic.
 
-A monitoring workflow checks the Prometheus rules with promtool, runs the alert unit tests, boots the monitoring stack and confirms every scrape target is up, and lints the Ansible playbooks. A model server workflow lints the chart, runs its tests, and deploys it to kind to test the rolling update, the failed rollout and the rollback. The VM workflow runs the deploy tests, validates the Compose file, and starts the real stack with HTTPS and the health check. The Slurm workflow runs the queue rules, the config checks and the demo report. The operator workflow runs the unit tests and the kind end-to-end test for both controllers.
+A monitoring workflow checks the Prometheus rules with promtool, runs the alert unit tests, boots the monitoring stack and confirms every scrape target is up, and lints the Ansible playbooks. A model server workflow lints the chart, runs its tests, and deploys it to kind to test the rolling update, the failed rollout and the rollback. The VM workflow runs the deploy tests, validates the Compose file, and starts the real stack with HTTPS and the health check. The Slurm workflow runs the queue rules, the config checks and the demo report. The operator workflow runs the unit tests and the kind end-to-end test for both controllers. The Wi-Fi workflow runs the access point config tests, shellcheck, and the namespace test with real DHCP and firewall checks. The Jenkins workflow lints the compose files, both Jenkinsfiles and the deploy script, starts the pinned controller on loopback, and builds and runs the LifeOS image.
 
 ## Other things I've built here
 

@@ -1,0 +1,27 @@
+# One file describes the whole access point. Run:
+#   python -m wifi_ap check wifi_ap/examples/example.yaml
+#   WIFI_AP_PASSPHRASE='...' python -m wifi_ap render wifi_ap/examples/example.yaml --out /etc/wifi-ap
+# The passphrase is never written here. The MAC addresses below are made-up examples.
+ap:
+  ssid: lifeos-desk
+  country_code: CA
+  channel: 6
+  ap_interface: wlan0        # the Wi-Fi adapter that becomes the access point
+subnet: 10.77.0.0/24         # the devices' own network, separate from the home LAN
+gateway: 10.77.0.1           # the access point box itself
+uplink:
+  interface: eth0            # the wired port that reaches the home network
+dhcp:
+  range: 10.77.0.100-10.77.0.199
+  lease_time: 12h
+  only_known_devices: true   # unknown MAC addresses get no address
+sensor_endpoint:
+  address: 192.168.50.10     # the home server that receives sensor readings
+  port: 8080
+devices:
+  - name: desk-node
+    mac: "02:00:00:00:00:01"
+    ip: 10.77.0.50
+  - name: garden-sensor
+    mac: "02:00:00:00:00:02"
+    ip: 10.77.0.51
