@@ -26,6 +26,8 @@ python -m soar.main
 python -m pytest -q tests
 ```
 
+The storage benchmark tests run with `python -m pytest -q benchmarks/tests` and need `fio` for the one short real run; that test is skipped when fio is missing.
+
 The Kubernetes chart tests need `helm` installed, and you run them with `python -m pytest -q k8s/tests`. The packet analysis tests need `tshark` and run with `python -m pytest -q netdiag/tests`. The VM, queue and operator tests run with `python -m pytest -q deploy/tests slurm/tests k8s/operators/tests`; the operator tests that need a kind cluster are skipped unless `HOMEOPS_E2E=1` is set.
 
 ## How it works
@@ -186,9 +188,32 @@ The technical parts: each controller is a Python loop that works through a small
 
 Two limits. The controllers run as processes outside the cluster in the test, not as pods inside it. And GPU capacity comes from a number in the quota file, not from the nodes.
 
+## Storage benchmarks for my backup copies
+
+I built a repeatable disk test for my home server because my backups go to three copies, and I wanted a fair way to tell whether they are getting slower over time, rather than relying on a feeling. A disk that slows down before it fails is often the first warning, so I want numbers I can compare from one month to the next.
+
+The test uses fio, a standard tool that reads and writes test files in the patterns real work makes: long reads and writes, and many small reads at random places. A Python script in `benchmarks/` runs fio against each folder I give it, such as the NAS and the local disk, using fixed job files. Each test is repeated five times. Every run gives three numbers: throughput (how much data moves per second), IOPS (how many operations finish per second) and p99 latency (the time that 99 out of 100 operations beat). The repeats show how much a number moves on its own, so a change only counts when it is bigger than that.
+
+The results are CSV tables and PNG charts with one dot per run, so the spread is visible. A new kernel, a new fio version or a different filesystem can change the numbers by themselves, so `compare` refuses to compare two results unless those settings match.
+
+To run it on the server:
+
+```sh
+sudo apt install fio
+python -m pip install -r benchmarks/requirements.txt
+python -m benchmarks run --target nas=/mnt/nas/bench --target local=/srv/bench --out ~/bench-results/2026-11-14
+python -m benchmarks compare ~/bench-results/old ~/bench-results/2026-11-14
+```
+
+A full run takes about an hour for each folder. It writes a 1 GB test file and deletes it when it finishes. The job files, the options and the limits are in [storage benchmark notes](docs/storage-benchmarks.md).
+
+The technical parts: `benchmarks/jobs/` holds five fio job files (sequential and random read and write, and a random mix), and the runner passes the block size, queue depth and read percentage through environment variables. It bypasses the page cache with direct I/O and runs the grid round-robin, so a slow hour on the NAS hits every setting a little. `benchmarks/parse.py` reads fio's JSON, `summary.py` computes medians and spreads, and `plots.py` draws Matplotlib charts on a log scale. The unit tests use saved fio output in `benchmarks/samples/`. GitHub Actions runs them, then does a short real fio run with direct I/O on an Ubuntu runner and compares that run with itself, in `.github/workflows/storage-benchmarks.yml`.
+
+The limit is that CI runs on a virtual disk, so it checks that the code works, not how fast a disk is. The first numbers from my own NAS are still to come.
+
 ## Checks
 
-GitHub Actions runs Python tests and detection checks, builds the telemetry image, and runs Pester tests on Windows Server. The Linux workflow runs the packet analysis tests on stored captures, the `tc netem` fault drill, the Ansible lint and the molecule run on a clean Ubuntu container. The operator workflow runs gofmt, golangci-lint, the unit and envtest tests, Helm lint, and the smoke test on kind. A Kubernetes workflow lints the Helm chart, checks the rendered manifests against the Kubernetes schema, runs the chart and network policy tests, and deploys to a throwaway kind cluster. There it checks the backup and restore, and that pods outside the allowed paths cannot reach the API or the database. The sample detection report shows precision and recall on synthetic examples, not performance against real traffic.
+GitHub Actions runs Python tests and detection checks, builds the telemetry image, and runs Pester tests on Windows Server. The storage benchmark workflow runs its parser, plot and compare tests, then a short real fio run on Ubuntu. The Linux workflow runs the packet analysis tests on stored captures, the `tc netem` fault drill, the Ansible lint and the molecule run on a clean Ubuntu container. The operator workflow runs gofmt, golangci-lint, the unit and envtest tests, Helm lint, and the smoke test on kind. A Kubernetes workflow lints the Helm chart, checks the rendered manifests against the Kubernetes schema, runs the chart and network policy tests, and deploys to a throwaway kind cluster. There it checks the backup and restore, and that pods outside the allowed paths cannot reach the API or the database. The sample detection report shows precision and recall on synthetic examples, not performance against real traffic.
 
 A monitoring workflow checks the Prometheus rules with promtool, runs the alert unit tests, boots the monitoring stack and confirms every scrape target is up, and lints the Ansible playbooks. A model server workflow lints the chart, runs its tests, and deploys it to kind to test the rolling update, the failed rollout and the rollback. The VM workflow runs the deploy tests, validates the Compose file, and starts the real stack with HTTPS and the health check. The Slurm workflow runs the queue rules, the config checks and the demo report. The operator workflow runs the unit tests and the kind end-to-end test for both controllers.
 

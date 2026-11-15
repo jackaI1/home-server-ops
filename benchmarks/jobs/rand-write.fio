@@ -1,0 +1,14 @@
+# Random write with a final fsync.
+[rand-write]
+ioengine=${IOENGINE}
+direct=${DIRECT}
+bs=${BS}
+iodepth=${IODEPTH}
+size=${SIZE}
+filename=${FILENAME}
+time_based=1
+runtime=${RUNTIME}
+ramp_time=${RAMP}
+randrepeat=0
+rw=randwrite
+end_fsync=1

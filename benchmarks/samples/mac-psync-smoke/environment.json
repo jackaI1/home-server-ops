@@ -1,0 +1,22 @@
+{
+  "started_at": "2026-11-15T02:10:28+00:00",
+  "system": "Darwin",
+  "kernel": "27.0.0",
+  "fio_version": "fio-3.43",
+  "python": "3.9.6",
+  "settings": {
+    "size": "16M",
+    "runtime_s": 1,
+    "ramp_s": 0,
+    "ioengine": "psync",
+    "direct": false,
+    "repeats": 2
+  },
+  "targets": {
+    "mac": {
+      "path": "/srv/bench",
+      "fstype": "unknown",
+      "mount_options": "unknown"
+    }
+  }
+}

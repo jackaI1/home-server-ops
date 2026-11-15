@@ -1,0 +1,13 @@
+# Sequential read of one large file. Lays out the file first (not timed).
+[seq-read]
+ioengine=${IOENGINE}
+direct=${DIRECT}
+bs=${BS}
+iodepth=${IODEPTH}
+size=${SIZE}
+filename=${FILENAME}
+time_based=1
+runtime=${RUNTIME}
+ramp_time=${RAMP}
+randrepeat=0
+rw=read
