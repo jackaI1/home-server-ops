@@ -1,0 +1,81 @@
+name: Storage benchmarks (fio)
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/**'
+      - 'docs/storage-benchmarks.md'
+      - '.github/workflows/storage-benchmarks.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'benchmarks/**'
+      - 'docs/storage-benchmarks.md'
+      - '.github/workflows/storage-benchmarks.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: storage-benchmarks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Parser, summary, plot and compare tests (saved fio output)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install the benchmark requirements
+        run: python -m pip install -r benchmarks/requirements.txt
+      - name: Run the tests (includes a short real fio run)
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y fio
+          python -m pytest -q benchmarks/tests
+
+  real-run:
+    name: Real fio run on a Linux disk, then report and self-compare
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fio and the benchmark requirements
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y fio util-linux
+          python -m pip install -r benchmarks/requirements.txt
+      - name: Run a short grid with direct I/O and libaio
+        env:
+          BENCH_DIR: ${{ runner.temp }}/bench-target
+          BENCH_OUT: ${{ runner.temp }}/bench-out
+        run: |
+          mkdir -p "$BENCH_DIR"
+          python -m benchmarks run \
+            --target runner="$BENCH_DIR" \
+            --out "$BENCH_OUT" \
+            --size 64M --runtime 2 --ramp 0 --repeats 2 \
+            --jobs seq-read,seq-write,rand-read,rand-write,rand-mixed \
+            --block-sizes 4k --iodepths 1,4 --rwmix 70
+      - name: Check that the test file was removed
+        env:
+          BENCH_DIR: ${{ runner.temp }}/bench-target
+        run: test ! -e "$BENCH_DIR/homeops-fio-benchmark.dat"
+      - name: Compare the run with itself (must show no flags)
+        env:
+          BENCH_OUT: ${{ runner.temp }}/bench-out
+        run: |
+          python -m benchmarks compare "$BENCH_OUT" "$BENCH_OUT" --markdown "$BENCH_OUT/self-compare.md"
+          cat "$BENCH_OUT/self-compare.md"
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storage-benchmark-results
+          path: ${{ runner.temp }}/bench-out
+          if-no-files-found: ignore

@@ -1,0 +1,15 @@
+# Random mix. RWMIX is the percentage of operations that are reads (70 = 70% reads, 30% writes).
+[rand-mixed]
+ioengine=${IOENGINE}
+direct=${DIRECT}
+bs=${BS}
+iodepth=${IODEPTH}
+size=${SIZE}
+filename=${FILENAME}
+time_based=1
+runtime=${RUNTIME}
+ramp_time=${RAMP}
+randrepeat=0
+rw=randrw
+rwmixread=${RWMIX}
+end_fsync=1

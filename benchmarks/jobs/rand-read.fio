@@ -1,0 +1,13 @@
+# Random read, the pattern of many small file reads.
+[rand-read]
+ioengine=${IOENGINE}
+direct=${DIRECT}
+bs=${BS}
+iodepth=${IODEPTH}
+size=${SIZE}
+filename=${FILENAME}
+time_based=1
+runtime=${RUNTIME}
+ramp_time=${RAMP}
+randrepeat=0
+rw=randread

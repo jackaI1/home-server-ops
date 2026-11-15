@@ -1,0 +1,14 @@
+# Sequential write. end_fsync flushes the cache so the numbers include the data reaching disk.
+[seq-write]
+ioengine=${IOENGINE}
+direct=${DIRECT}
+bs=${BS}
+iodepth=${IODEPTH}
+size=${SIZE}
+filename=${FILENAME}
+time_based=1
+runtime=${RUNTIME}
+ramp_time=${RAMP}
+randrepeat=0
+rw=write
+end_fsync=1
