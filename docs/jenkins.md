@@ -14,7 +14,7 @@ docker compose -f deploy/jenkins/compose.yml up -d --build --wait
 
 The controller is at `http://127.0.0.1:8080`. It is published on loopback only. From a laptop, open a tunnel with `ssh -L 8080:127.0.0.1:8080 <server>` and visit `http://127.0.0.1:8080` there. On the first start, Jenkins prints an admin password in the container log: `docker compose -f deploy/jenkins/compose.yml logs jenkins`.
 
-The image is `jenkins/jenkins:2.479.3-lts-jdk17` with the Docker CLI and the plugins in `plugins.txt` added. To update Jenkins, change the tag in `Dockerfile` and `compose.yml` together, after reading its changelog.
+The image is `jenkins/jenkins:2.541.3-lts-jdk17` with the Docker CLI and the plugins in `plugins.txt` added. To update Jenkins, change the tag in `Dockerfile` and `compose.yml` together, after reading its changelog.
 
 ## Create the two jobs
 

@@ -1,5 +1,5 @@
 # Jenkins LTS, pinned to one release. Update the tag on purpose, after reading the Jenkins changelog.
-FROM jenkins/jenkins:2.479.3-lts-jdk17
+FROM jenkins/jenkins:2.541.3-lts-jdk17
 
 # The Docker CLI only: the daemon is the host's, reached through the mounted socket.
 COPY --from=docker:27.3.1-cli /usr/local/bin/docker /usr/local/bin/docker

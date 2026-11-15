@@ -24,6 +24,8 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/build ./build
 COPY --from=build /app/public ./public
 COPY --from=build /app/package.json ./package.json
+# LifeOS keeps its state in directories under /app, so the node user must own that folder.
+RUN chown node:node /app
 USER node
 EXPOSE 8787
 CMD ["node", "build/server.mjs"]

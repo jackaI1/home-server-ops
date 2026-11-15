@@ -61,7 +61,7 @@ def test_controller_has_a_health_check_and_no_new_privileges():
 def test_dockerfile_pins_the_base_image_and_installs_plugins():
     text = (JENKINS / "Dockerfile").read_text()
     from_lines = [line for line in text.splitlines() if line.startswith("FROM ")]
-    assert from_lines == ["FROM jenkins/jenkins:2.479.3-lts-jdk17"]
+    assert from_lines == ["FROM jenkins/jenkins:2.541.3-lts-jdk17"]
     assert "jenkins-plugin-cli --plugin-file" in text
 
 
