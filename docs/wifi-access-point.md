@@ -45,6 +45,6 @@ Use a dedicated Linux box with a Wi-Fi adapter and a wired port to the home netw
 ## Tests
 
 - `python -m pytest -q wifi_ap/tests` checks the validator, the renderer, the parser and the CLI.
-- `sudo WIFI_AP_PASSPHRASE=... bash wifi_ap/netns/test_netns.sh` builds three namespaces (`ap`, `home`, `desk`) and runs the DHCP and traffic checks. It needs root, `dnsmasq-base`, `nftables`, `isc-dhcp-client` and `util-linux`. It stops what it started and removes its namespaces when it exits.
+- `sudo WIFI_AP_PASSPHRASE=... bash wifi_ap/netns/test_netns.sh` builds three namespaces (`ap`, `home`, `desk`) and runs the DHCP and traffic checks. It needs root, `dnsmasq-base`, `nftables`, `udhcpc` and `util-linux`. It stops what it started and removes its namespaces when it exits.
 
 The CI workflow is `.github/workflows/wifi-ap.yml`.

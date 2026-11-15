@@ -53,7 +53,7 @@ jobs:
       - name: Install the tools the test uses
         run: |
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y dnsmasq-base nftables isc-dhcp-client \
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y dnsmasq-base nftables udhcpc \
             iproute2 util-linux python3-yaml
       - name: Run the namespace test as root
         run: sudo WIFI_AP_PASSPHRASE=ci-only-passphrase PYTHON=/usr/bin/python3 bash wifi_ap/netns/test_netns.sh

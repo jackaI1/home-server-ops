@@ -113,9 +113,9 @@ for _ in $(seq 1 25); do [[ -s "$WORK/state/dnsmasq.pid" ]] && break; sleep 0.2;
 DNSMASQ_PID="$(cat "$WORK/state/dnsmasq.pid")"
 echo "$DNSMASQ_PID" >> "$PIDS"
 
-dhcp_as_desk() { # one DHCP attempt from the desk client, bounded by timeout
-  ip netns exec desk timeout 25 dhclient -1 -v -sf "$ROOT/wifi_ap/netns/apply_lease.sh" \
-    -pf "$WORK/dhclient.pid" -lf "$WORK/dhclient.leases" wlan0 >>"$WORK/dhclient.log" 2>&1 || true
+dhcp_as_desk() { # one DHCP attempt from the desk client: -f stay in foreground, -q quit after a lease, -n fail if none
+  ip netns exec desk timeout 25 udhcpc -i wlan0 -f -q -n -s "$ROOT/wifi_ap/netns/apply_lease.sh" \
+    >>"$WORK/dhcp.log" 2>&1 || true
 }
 probe_from() { # probe_from NS HOST PORT -> prints outcome, exit code from probe
   ip netns exec "$1" "$PY" "$ROOT/wifi_ap/netns/sensor_stub.py" probe "$2" "$3" --timeout 3
@@ -154,7 +154,7 @@ check "unknown MAC gets no lease" test "$before" -eq "$after"
 if [[ "$FAIL" -gt 0 ]]; then
   # Show only the last lines of each log, so a failure is readable without a flood of output.
   echo "== Diagnostics (last lines only)"
-  for log in "$WORK/dnsmasq.log" "$WORK/dhclient.log"; do
+  for log in "$WORK/dnsmasq.log" "$WORK/dhcp.log"; do
     if [[ -f "$log" ]]; then echo "--- $(basename "$log")"; tail -n 40 "$log"; fi
   done
   echo "--- addresses"
