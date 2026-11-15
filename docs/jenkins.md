@@ -35,6 +35,7 @@ In Manage Jenkins, Credentials, add a **Secret file** with ID `lifeos-env-file`.
 - The Docker socket is mounted into the controller so builds can run. Anyone who can change a job can run containers as root on the host. Keep the login on and keep the port on loopback.
 - LifeOS listens on 127.0.0.1 and uses host networking, so it shares the host's loopback. The health check assumes port 8787.
 - The plugin versions are not pinned; the controller image is.
+- At the time of writing, two of LifeOS's own demo tests fail on the public `main` branch of `lifeos-open` (`test/demo-assistant.test.mjs` and `test/demo-assistant-actions.test.mjs`). The build job's test stage shows that as a failure until they are fixed there. The CI job reports the count and does not gate on it, so it checks the pipeline's report step rather than LifeOS's tests.
 
 ## Tests
 
