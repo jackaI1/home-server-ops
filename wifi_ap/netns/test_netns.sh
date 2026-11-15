@@ -151,6 +151,19 @@ dhcp_as_desk
 after="$(wc -l < "$BOUND_LOG")"
 check "unknown MAC gets no lease" test "$before" -eq "$after"
 
+if [[ "$FAIL" -gt 0 ]]; then
+  # Show only the last lines of each log, so a failure is readable without a flood of output.
+  echo "== Diagnostics (last lines only)"
+  for log in "$WORK/dnsmasq.log" "$WORK/dhclient.log"; do
+    if [[ -f "$log" ]]; then echo "--- $(basename "$log")"; tail -n 40 "$log"; fi
+  done
+  echo "--- addresses"
+  ip -n ap -brief addr 2>/dev/null || true
+  ip -n desk -brief addr 2>/dev/null || true
+  echo "--- firewall rules in ap"
+  ip netns exec ap nft list ruleset 2>/dev/null | head -n 40 || true
+fi
+
 echo
 echo "== Result: $PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]]
