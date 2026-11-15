@@ -11,3 +11,4 @@ monitoring/.env
 monitoring/textfile/*
 !monitoring/textfile/.gitkeep
 deploy/jenkins/.env
+deploy/jenkins/lifeos.env
